@@ -1,0 +1,6 @@
+.venv
+figures
+.env
+test.py
+tests
+plan.txt

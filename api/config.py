@@ -1,0 +1,42 @@
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
+from pydantic import Field
+
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
+class StaticSettings(BaseSettings):
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+    DATABASE_URL: str = "sqlite:///./api/database/data/sfa_database.db"
+    TIMEOUT_SECONDS: int = 180
+    ROW_LIMIT: int = 20
+
+class EnvSettings(BaseSettings):
+    SECRET_KEY: str = Field(default_factory=lambda: os.getenv("SECRET_KEY"))
+    DB_ENCRYPTION_KEY: str = Field(default_factory=lambda: os.getenv("DB_ENCRYPTION_KEY"))
+    SENTRY_SDK_DNS: str = Field(default_factory=lambda: os.getenv("SENTRY_SDK_DNS"))
+    GROQ_API_KEY: str = Field(default_factory=lambda: os.getenv("GROQ_API_KEY"))
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if not self.SECRET_KEY:
+            raise ValueError("CRITICAL ERROR: 'SECRET_KEY' not found in .env file.")
+        if not self.DB_ENCRYPTION_KEY:
+            raise ValueError("CRITICAL ERROR: 'DB_ENCRYPTION_KEY' not found in .env file.")
+
+class UnifiedSettings(StaticSettings, EnvSettings):
+    def __init__(self, **kwargs):
+        StaticSettings.__init__(self, **kwargs)
+        EnvSettings.__init__(self, **kwargs)
+
+settings = UnifiedSettings()
+
+if settings.DATABASE_URL.startswith("sqlite"):
+    db_path_str = settings.DATABASE_URL.replace("sqlite:///", "")
+    db_folder = Path(db_path_str).parent
+    if not db_folder.exists():
+        db_folder.mkdir(parents=True, exist_ok=True)
+        print(f"--- Environment Setup: Created directory {db_folder} ---")
