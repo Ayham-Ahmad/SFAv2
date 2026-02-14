@@ -4,3 +4,4 @@ figures
 test.py
 tests
 plan.txt
+docker-compose.yml

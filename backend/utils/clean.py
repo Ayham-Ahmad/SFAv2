@@ -4,15 +4,16 @@ from typing import Dict, Any, Optional
 
 from api.constants import FORBIDDEN_KEYWORDS
 
-def clean_sql(raw_sal: str) -> str:
-    return raw_sal.split(";")[0].strip()
+def clean_sql(raw_sql: str) -> str:
+    raw_sql = re.sub(r"```sql|```", "", raw_sql)
+    return raw_sql.split(";")[0].strip()
 
 def validate_read_only(sql: str) -> bool:
     normalized = sql.upper()
     for keyword in FORBIDDEN_KEYWORDS:
-        if re.search(r'\b' + keyword + r'\b', normalized):
+        if re.search(r'\b' + re.escape(keyword) + r'\b', normalized):
             return False
-        return True
+    return True
     
 def extract_react_components(raw_llm_text: str) -> Dict[str, Any]:
     thought_match = re.search(r"Thought:\s*(.*?)(?=\nAction:|\nFinal Answer:|$)", raw_llm_text, re.DOTALL)

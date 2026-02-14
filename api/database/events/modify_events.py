@@ -5,6 +5,7 @@ from typing import Optional
 
 from ..models import User, Company, TentDatabase, Modification
 from ...constants import TableName, ActionType
+from ..database import Base
 
 def _get_id_column_name(target: str): # ✅
     if target == TableName.USERS:
@@ -29,7 +30,7 @@ def _get_entity(db: Session, entity_id: int, target: str): # ✅
     id_attr = getattr(model, _get_id_column_name(target))
     return db.query(model).filter(id_attr == entity_id).first()
 
-def get_current_snapshot(entity, exclude_modify_key: bool = True): # ✅
+def get_current_snapshot(entity: Base, exclude_modify_key: bool = True): # ✅
     """
         this function is just to return a snapshot for a row for a current entity status
     """
