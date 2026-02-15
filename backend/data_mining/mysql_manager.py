@@ -12,9 +12,11 @@ class MySQLManager(BaseDataManager):
         self.host = self.config.get("HOST")
         self.port = int(self.config.get("PORT", 3306))
         self.user = self.config.get("USER")
-        
+
         pwd = self.config.get("PASSWORD")
-        self.password = pwd.get_secret_value() if hasattr(pwd, "get_secret_value") else pwd
+        self.password = (
+            pwd.get_secret_value() if hasattr(pwd, "get_secret_value") else pwd
+        )
 
         self.database = self.config.get("DATABASE")
         self.charset = self.config.get("CHARSET", "utf8mb4")
@@ -68,7 +70,7 @@ class MySQLManager(BaseDataManager):
 
         try:
             query = """
-                SELECT table_name, column_name, data_type, is_nullable 
+                SELECT table_name, column_name, data_type 
                 FROM information_schema.columns 
                 WHERE table_schema = %s 
                 ORDER BY table_name, ordinal_position;
@@ -79,44 +81,33 @@ class MySQLManager(BaseDataManager):
             rows = cursor.fetchall()
 
             schema_map = {}
-            tables_list = []
 
             for row in rows:
                 t_name = row["table_name"]
                 if t_name not in schema_map:
-                    schema_map[t_name] = {"columns": [], "row_count": 0}
-                    tables_list.append(t_name)
+                    schema_map[t_name] = {"row_count": 0, "columns": []}
 
-                schema_map[t_name]["columns"].append(
-                    {
-                        "name": row["column_name"],
-                        "type": row["data_type"],
-                        "nullable": row["is_nullable"] == "YES",
-                    }
-                )
+                column_info = f"{row['column_name']}: {row['data_type']}"
+                schema_map[t_name]["columns"].append(column_info)
 
-            for t in tables_list:
+            for t_name in schema_map.keys():
                 try:
-                    cursor.execute(f"SELECT COUNT(*) as cnt FROM `{t}`")
+                    cursor.execute(f"SELECT COUNT(*) as cnt FROM `{t_name}`")
                     count_res = cursor.fetchone()
-                    schema_map[t]["row_count"] = count_res["cnt"]
-                except Error:
-                    schema_map[t]["row_count"] = -1
+                    schema_map[t_name]["row_count"] = count_res["cnt"]
+                except Exception:
+                    schema_map[t_name]["row_count"] = -1
 
             cursor.close()
 
             return create_response(
                 success=True,
-                data={
-                    "tables": tables_list,
-                    "schema": schema_map,
-                    "total_tables": len(tables_list),
-                },
+                data={"total_tables": len(schema_map), "tables": schema_map},
             )
 
-        except Error as e:
+        except Exception as e:
             return create_response(
-                success=False, message="Schema Extraction Failed", error=str(e)
+                success=False, message="MySQL Schema Extraction Failed", error=str(e)
             )
 
     def execute_query(self, query: str) -> Any:

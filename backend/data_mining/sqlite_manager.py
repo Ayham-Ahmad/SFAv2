@@ -75,40 +75,27 @@ class SQLiteManager(BaseDataManager):
             cursor.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
             )
-            tables = [row[0] for row in cursor.fetchall()]
+            table_names = [row[0] for row in cursor.fetchall()]
 
             schema_map = {}
 
-            for table in tables:
+            for table in table_names:
                 cursor.execute(f"PRAGMA table_info('{table}')")
-                columns = []
-                for r in cursor.fetchall():
-                    columns.append(
-                        {
-                            "name": r["name"],
-                            "type": r["type"],
-                            "nullable": not bool(r["notnull"]),
-                        }
-                    )
+                columns = [f"{r['name']}: {r['type']}" for r in cursor.fetchall()]
 
                 cursor.execute(f"SELECT COUNT(*) FROM '{table}'")
                 row_count = cursor.fetchone()[0]
 
-                schema_map[table] = {"columns": columns, "row_count": row_count}
+                schema_map[table] = {"row_count": row_count, "columns": columns}
 
             cursor.close()
-
             return create_response(
                 success=True,
-                data={
-                    "tables": tables,
-                    "schema": schema_map,
-                    "total_tables": len(tables),
-                },
+                data={"total_tables": len(table_names), "tables": schema_map},
             )
         except Exception as e:
             return create_response(
-                success=False, message="Schema Extraction Failed", error=str(e)
+                success=False, message="SQLite Schema Error", error=str(e)
             )
 
     def execute_query(self, query: str) -> Any:

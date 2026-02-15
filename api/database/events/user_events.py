@@ -87,6 +87,10 @@ class UserCRUD:
             .order_by(User.user_id)
             .all()
         )
+    
+    @staticmethod
+    def get_admin_by_company_id(db: Session, company_id: int) -> User:
+        return db.query(User).filter(User.company_id == company_id).first()
 
     @staticmethod
     def update_last_login(db: Session, user: User):

@@ -91,29 +91,25 @@ class MongoManager(BaseDataManager):
 
                 if sample_doc:
                     for key, value in sample_doc.items():
-                        col_type = type(value).__name__
                         if key == "_id":
                             col_type = "ObjectId"
+                        else:
+                            col_type = type(value).__name__
 
-                        columns.append(
-                            {"name": key, "type": col_type, "nullable": True}
-                        )
+                        columns.append(f"{key}: {col_type}")
 
                 row_count = self.db[col_name].estimated_document_count()
-                schema_map[col_name] = {"columns": columns, "row_count": row_count}
+
+                schema_map[col_name] = {"row_count": row_count, "columns": columns}
 
             return create_response(
                 success=True,
-                data={
-                    "tables": collections,
-                    "schema": schema_map,
-                    "total_tables": len(collections),
-                },
+                data={"total_tables": len(collections), "tables": schema_map},
             )
 
         except Exception as e:
             return create_response(
-                success=False, message="Schema Extraction Failed", error=str(e)
+                success=False, message="MongoDB Schema Extraction Failed", error=str(e)
             )
 
     def execute_query(self, query: str) -> Any:

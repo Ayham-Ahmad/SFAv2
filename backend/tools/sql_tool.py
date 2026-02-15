@@ -14,14 +14,16 @@ def execute_multitent_queries(
 ) -> Dict[str, Any]:
     
     final_results = {
-        "results": {},
-        "metadata": {"tables_queried": table_mapping}
+        "results": {}
     }
     errors = []
 
     try:
         for db_id, task in query_mapping.items():
             sql_query = task.get("query")
+            
+            t_names = table_mapping.get(str(db_id), table_mapping.get(int(db_id), ["unknown_table"]))
+            primary_table = t_names[0] 
 
             if not sql_query:
                 continue
@@ -32,7 +34,7 @@ def execute_multitent_queries(
                 continue
 
             execution_response = MultiTenantDBManager.execute_query_for_tent(tent, sql_query.strip())
-
+            
             if not execution_response.get("success"):
                 errors.append({"db_id": db_id, "error": execution_response.get("error")})
                 continue
@@ -41,12 +43,16 @@ def execute_multitent_queries(
             rows = payload.get("rows", [])
             columns = payload.get("columns", [])
 
+            db_key = str(db_id)
+            if db_key not in final_results["results"]:
+                final_results["results"][db_key] = {}
+
             if not rows:
-                final_results["results"][db_id] = []
+                final_results["results"][db_key][primary_table] = []
                 continue
 
             df = pd.DataFrame(rows, columns=columns)
-            final_results["results"][db_id] = df.head(100).to_dict(orient="records")
+            final_results["results"][db_key][primary_table] = df.head(100).to_dict(orient="records")
 
     except Exception as e:
         sentry_sdk.capture_exception(e)

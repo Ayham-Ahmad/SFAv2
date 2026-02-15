@@ -6,6 +6,7 @@ from .mysql_manager import MySQLManager
 from .mongo_manager import MongoManager
 from .postgres_manager import PostgreSQLManager
 from api.constants import DatabaseType
+from ..utils.responses import create_response
 
 MANAGERS = {
     DatabaseType.SQLITE: SQLiteManager,
@@ -29,10 +30,7 @@ class DataCollectionManager:
     def test_connection(source_type: str, config: Dict) -> Dict[str, Any]:
         manager_class = DataCollectionManager.get_manager(source_type)
         if not manager_class:
-            return {
-                "success": False, 
-                "message": f"Unsupported data source type: {source_type}"
-            }
+            return create_response(False, f"Unsupported data source type: {source_type}")
         
         manager = manager_class(config)
         try:
@@ -55,18 +53,16 @@ class DataCollectionManager:
     def get_schema(source_type: str, config: Dict) -> Dict[str, Any]:
         manager_class = DataCollectionManager.get_manager(source_type)
         if not manager_class:
-            return {"success": False, "message": "Unsupported type"}
+            return create_response(False, "Unsupported type")
         
         manager = manager_class(config)
-        
         try:
             if not manager.connect():
-                return {"success": False, "message": "Failed to connect"}
+                return create_response(False, "Failed to connect")
             
-            schema = manager.get_full_schema()
-            return schema
+            return manager.get_full_schema()
         except Exception as e:
-            return {"success": False, "message": f"Unexpected Error: {str(e)}"}
+            return create_response(False, f"Unexpected Error: {str(e)}")
         finally:
             manager.disconnect()
     
@@ -74,17 +70,15 @@ class DataCollectionManager:
     def execute_query(source_type: str, config: Dict, query: str) -> Dict[str, Any]:
         manager_class = DataCollectionManager.get_manager(source_type)
         if not manager_class:
-            return {"success": False, "message": "Unsupported type"}
+            return create_response(False, "Unsupported type")
         
         manager = manager_class(config)
-        
         try:
             if not manager.connect():
-                return {"success": False, "message": "Failed to connect"}
+                return create_response(False, "Failed to connect")
             
             return manager.execute_query(query)
-            
         except Exception as e:
-            return {"success": False, "message": f"Execution Error: {str(e)}"}
+            return create_response(False, f"Execution Error: {str(e)}")
         finally:
             manager.disconnect()

@@ -1,5 +1,6 @@
 from typing import Dict, Any, Optional
 import sentry_sdk
+from datetime import datetime, timezone
 
 from ..data_mining.manager import DataCollectionManager
 from api.database.models import TentDatabase
@@ -43,7 +44,11 @@ class MultiTenantDBManager:
             return MultiTenantDBManager._db_connection_failed_message()
 
         try:
-            return manager.get_full_schema()
+            schema = manager.get_full_schema()
+            if schema:
+                tent.last_synced = datetime.now(timezone.utc)
+                tent.last_ping = datetime.now(timezone.utc)
+            return schema
         except Exception as e:
             sentry_sdk.capture_exception(e)
             return create_response(

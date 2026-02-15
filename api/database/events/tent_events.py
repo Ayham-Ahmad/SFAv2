@@ -2,10 +2,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from typing import Union, Optional, List, Dict
 from pydantic import BaseModel
+from datetime import datetime, timezone
 
 from ..models import TentDatabase, Company
 from .modify_events import record_modification, get_current_snapshot
-from ...constants import TableName, ActionType, PLAN_LIMITS
+from ...constants import TableName, ActionType, PLAN_LIMITS, DatabaseType
 from ...utils import to_dict
 from backend.utils.encryption import encrypt_config
 from backend.services.tenant_manager import MultiTenantDBManager
@@ -17,16 +18,17 @@ class TentCRUD:
         db: Session, tent_data: Union[dict, BaseModel], actor_id
     ) -> TentDatabase:
         from .company_events import CompanyCRUD  # Lazy Import
+        from .user_events import UserCRUD # Lazy Import
 
         data = to_dict(tent_data)
-
         data = TentCRUD._get_encrypt_config(data)
-
         company_id = data.get("company_id")
 
+        company = None
         if company_id:
             company = CompanyCRUD.get_by_id(db, company_id)
-            if company:
+            admin = UserCRUD.get_admin_by_company_id(db, company_id)
+            if company and admin.user_id == actor_id:
                 limits = PLAN_LIMITS.get(company.plan, PLAN_LIMITS["free"])
 
                 if company.databases_count >= limits["dbs"]:
@@ -35,13 +37,49 @@ class TentCRUD:
                     )
 
                 company_old_snapshot = get_current_snapshot(company)
-
+                
+            else:
+                print("You are not Authorized")
+                return 0
+            
         new_tent = TentDatabase(**data)
+
+        schema_response = MultiTenantDBManager.get_schema_for_tent(new_tent)
+        
+        if not schema_response.get("success"):
+            raise ValueError(f"Failed to connect and verify database: {schema_response.get('message')}")
+
+        res_data = schema_response.get("data", {})
+        incoming_table_count = res_data.get("total_tables", 0)
+
+        if (company.total_tables_count + incoming_table_count) > limits["tables"]:
+            raise ValueError(
+                f"Table limit reached. This would bring your total to "
+                f"{company.total_tables_count + incoming_table_count}/{limits['tables']} tables."
+            )            
+        
+        if new_tent.db_type == DatabaseType.CSV:
+            incoming_size_mb = res_data.get("total_size_mb", 0.0)
+            if (company.total_storage_mb + incoming_size_mb) > limits["storage_mb"]:
+                raise ValueError(
+                    f"Storage limit reached. This CSV ({incoming_size_mb}MB) would exceed "
+                    f"your remaining quota of {round(limits['storage_mb'] - company.total_storage_mb, 2)}MB."
+                )
+
+        new_tent.cached_schema = res_data
+        new_tent.is_connected = True
+        new_tent.last_synced = datetime.now(timezone.utc)
+
         db.add(new_tent)
         db.flush()
 
-        if new_tent.company_id and company:
+        if company:
             company.databases_count += 1
+            company.total_tables_count += incoming_table_count
+            
+            if new_tent.db_type == "csv":
+                company.total_storage_mb += incoming_size_mb
+
             record_modification(
                 db,
                 TableName.COMPANIES,
@@ -88,6 +126,10 @@ class TentCRUD:
     def get_tables_schema(
         db: Session, company_id: int, selected_tent_ids: List[int]
     ) -> Dict[str, List[str]]:
+        
+        if isinstance(selected_tent_ids, int):
+            selected_tent_ids = [selected_tent_ids]
+        
         tables_dict = {}
 
         tent_data = (
@@ -101,7 +143,15 @@ class TentCRUD:
         )
 
         for tent in tent_data:
-            tables_dict[tent.db_id] = tent.cached_schema or []
+            schema_data = tent.cached_schema or {}
+            tables_metadata = schema_data.get("tables", {})
+            
+            simplified_tables = {
+                table_name: meta.get("columns", [])
+                for table_name, meta in tables_metadata.items()
+            }
+            
+        tables_dict[tent.db_id] = simplified_tables
 
         return tables_dict
 
@@ -146,7 +196,16 @@ class TentCRUD:
                 company = CompanyCRUD.get_by_id(db, tent_record.company_id)
                 if company:
                     company_old_snapshot = get_current_snapshot(company)
-                    company.databases_count -= 1
+                    
+                    company.databases_count = max(0, company.databases_count -1)
+                    old_schema_data = tent_record.cached_schema or {}
+                    tables_to_remove = old_schema_data.get("total_tables", 0)
+                    company.total_tables_count = max(0, company.total_tables_count - tables_to_remove)
+                    
+                    if tent_record.db_type == DatabaseType.CSV:
+                        size_to_remove = old_schema_data.get("total_size_mb", 0.0)
+                        company.total_storage_mb = max(0.0, company.total_storage_mb - size_to_remove)
+                    
                     record_modification(
                         db,
                         TableName.COMPANIES,

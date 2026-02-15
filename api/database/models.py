@@ -36,6 +36,8 @@ class Company(Base):
     plan = Column(String, default="free")
     settings = Column(JSON, default=dict)
     databases_count = Column(Integer, default=0)
+    total_tables_count = Column(Integer, default=0)
+    total_storage_mb = Column(Float, default=0)
     managers_count = Column(Integer, default=0)
     company_created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

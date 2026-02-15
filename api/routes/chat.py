@@ -15,7 +15,7 @@ from api.database.models import Interaction, User
 from backend.services.tenant_manager import MultiTenantDBManager
 from api.config import settings
 from api.database.events import TentCRUD, InteractionCRUD
-from backend.utils.pricing import CostCalculator
+from backend.utils.calculating import CostCalculator
 from backend.utils.responses import create_response
 
 # from backend.pipeline.progress import (

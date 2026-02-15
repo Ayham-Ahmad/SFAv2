@@ -8,18 +8,15 @@ from typing import Dict, Any, Optional
 from .base import BaseDataManager
 from .sqlite_manager import SQLiteManager
 from ..utils.responses import create_response
+from ..utils.calculating import calculate_csv_size_mb
 
 
 class CSVManager(BaseDataManager):
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.csv_path = self.config.get("PATH") or self.config.get("path")
-        self.delimiter = self.config.get("DELIMITER") or self.config.get(
-            "delimiter", ","
-        )
-        self.encoding = self.config.get("ENCODING") or self.config.get(
-            "encoding", "utf-8"
-        )
+        self.delimiter = self.config.get("DELIMITER") or self.config.get("delimiter", ",")
+        self.encoding = self.config.get("ENCODING") or self.config.get("encoding", "utf-8")
         self.has_header = self.config.get("HEADER", True)
 
         self.temp_db_path: Optional[str] = None
@@ -103,9 +100,22 @@ class CSVManager(BaseDataManager):
 
     def get_full_schema(self) -> Any:
         if not self.connect() or not self.sqlite_engine:
-            return create_response(success=False, message="Failed to process CSV")
+            return create_response(
+                success=False, message="Failed to process CSV - Engine not initialized"
+            )
 
-        return self.sqlite_engine.get_full_schema()
+        response = self.sqlite_engine.get_full_schema()
+
+        if response.get("success"):
+            size_mb = calculate_csv_size_mb(self.csv_path)
+            response["data"]["total_size_mb"] = round(size_mb, 2)
+            return response
+
+        return create_response(
+            success=False,
+            message="CSV Schema Extraction Failed",
+            error=response.get("message"),
+        )
 
     def execute_query(self, query: str) -> Any:
         if not self.connect() or not self.sqlite_engine:

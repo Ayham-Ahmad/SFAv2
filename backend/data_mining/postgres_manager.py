@@ -14,10 +14,14 @@ class PostgreSQLManager(BaseDataManager):
         self.user = self.config.get("USER") or self.config.get("user")
 
         pwd = self.config.get("PASSWORD") or self.config.get("password")
-        self.password = pwd.get_secret_value() if hasattr(pwd, "get_secret_value") else pwd
+        self.password = (
+            pwd.get_secret_value() if hasattr(pwd, "get_secret_value") else pwd
+        )
 
         self.database = self.config.get("DATABASE") or self.config.get("database")
-        self.ssl_mode = self.config.get("SSL_MODE") or self.config.get("ssl_mode", "prefer")
+        self.ssl_mode = self.config.get("SSL_MODE") or self.config.get(
+            "ssl_mode", "prefer"
+        )
         self.conn = None
 
     def _get_connection_params(self):
@@ -28,7 +32,7 @@ class PostgreSQLManager(BaseDataManager):
             "password": self.password,
             "dbname": self.database,
             "sslmode": self.ssl_mode,
-            "connect_timeout": 5
+            "connect_timeout": 5,
         }
 
     def connect(self) -> bool:
@@ -64,56 +68,46 @@ class PostgreSQLManager(BaseDataManager):
                 success=False, message="Connection Error", error=str(e)
             )
 
+    from psycopg2.extras import RealDictCursor
+
     def get_full_schema(self) -> Any:
         if not self.connect():
-            return create_response(success=False, message="Not connected to database")
+            return create_response(success=False, message="Postgres disconnected")
 
         try:
             schema_query = """
-                SELECT table_name, column_name, data_type, is_nullable
+                SELECT table_name, column_name, data_type
                 FROM information_schema.columns
                 WHERE table_schema = 'public'
-                ORDER BY table_name, ordinal_position;
+                ORDER BY table_name;
             """
-
             with self.conn.cursor(cursor_factory=RealDictCursor) as cursor:
                 cursor.execute(schema_query)
                 rows = cursor.fetchall()
 
             schema_map = {}
-            tables_list = []
-
             for row in rows:
                 t_name = row["table_name"]
                 if t_name not in schema_map:
-                    schema_map[t_name] = {"columns": [], "row_count": 0}
-                    tables_list.append(t_name)
+                    schema_map[t_name] = {"row_count": 0, "columns": []}
 
                 schema_map[t_name]["columns"].append(
-                    {
-                        "name": row["column_name"],
-                        "type": row["data_type"],
-                        "nullable": row["is_nullable"] == "YES",
-                    }
+                    f"{row['column_name']}: {row['data_type']}"
                 )
 
             with self.conn.cursor() as cursor:
-                for t in tables_list:
-                    cursor.execute(f"SELECT COUNT(*) FROM {t}")
-                    schema_map[t]["row_count"] = cursor.fetchone()[0]
+                for t_name in schema_map.keys():
+                    cursor.execute(f'SELECT COUNT(*) FROM "{t_name}"')
+                    schema_map[t_name]["row_count"] = cursor.fetchone()[0]
 
             return create_response(
                 success=True,
-                data={
-                    "tables": tables_list,
-                    "schema": schema_map,
-                    "total_tables": len(tables_list),
-                },
+                data={"total_tables": len(schema_map), "tables": schema_map},
             )
-
         except Exception as e:
+            self.conn.rollback()
             return create_response(
-                success=False, message="Schema Extraction Failed", error=str(e)
+                success=False, message="Postgres Schema Error", error=str(e)
             )
 
     def execute_query(self, query: str) -> Any:
