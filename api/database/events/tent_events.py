@@ -8,7 +8,7 @@ from ..models import TentDatabase, Company
 from .modify_events import record_modification, get_current_snapshot
 from ...constants import TableName, ActionType, PLAN_LIMITS, DatabaseType
 from ...utils import to_dict
-from backend.utils.encryption import encrypt_config
+from backend.utils.encryption import encrypt_config, decrypt_config
 from backend.services.tenant_manager import MultiTenantDBManager
 
 
@@ -19,7 +19,7 @@ class TentCRUD:
     ) -> TentDatabase:
         from .company_events import CompanyCRUD  # Lazy Import
         from .user_events import UserCRUD # Lazy Import
-
+        
         data = to_dict(tent_data)
         data = TentCRUD._get_encrypt_config(data)
         company_id = data.get("company_id")
@@ -43,7 +43,10 @@ class TentCRUD:
                 return 0
             
         new_tent = TentDatabase(**data)
-
+        
+        db.add(new_tent)
+        db.flush()
+        
         schema_response = MultiTenantDBManager.get_schema_for_tent(new_tent)
         
         if not schema_response.get("success"):
@@ -70,8 +73,6 @@ class TentCRUD:
         new_tent.is_connected = True
         new_tent.last_synced = datetime.now(timezone.utc)
 
-        db.add(new_tent)
-        db.flush()
 
         if company:
             company.databases_count += 1

@@ -7,7 +7,6 @@ from ..deps import get_db, get_current_active_user, check_admin_access, check_su
 from ..database.models import User
 from ..database.schemas import TentCreate, TentOut, TentUpdate, CompanySummaryOut, DatabaseQueryRequest
 from ..database.events import TentCRUD, CompanyCRUD
-from backend.data_mining.manager import DataCollectionManager
 from backend.services.tenant_manager import MultiTenantDBManager
 from ..constants import UserRole
 
@@ -16,7 +15,7 @@ router = APIRouter(prefix="/api/tents", tags=["Database Tents"])
 @router.get("/types")
 async def get_database_types():
     return {
-        "types": DataCollectionManager.get_supported_types()
+        "types": MultiTenantDBManager.get_supported_types()
     }
 
 @router.post("/test")

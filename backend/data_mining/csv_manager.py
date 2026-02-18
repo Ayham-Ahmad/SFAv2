@@ -30,9 +30,10 @@ class CSVManager(BaseDataManager):
         return base.strip().replace(" ", "_").replace("-", "_").replace(".", "_")
 
     def connect(self) -> bool:
-        if self.sqlite_engine and self.sqlite_engine.connect():
-            self.is_connected = True
-            return True
+        if self.sqlite_engine and self.temp_db_path:
+            if self.sqlite_engine.db_path == self.temp_db_path and self.sqlite_engine.connect():
+                self.is_connected = True
+                return True
 
         if not self.csv_path or not os.path.exists(self.csv_path):
             self.is_connected = False
@@ -46,24 +47,28 @@ class CSVManager(BaseDataManager):
 
             with open(self.csv_path, "r", encoding=self.encoding, newline="") as f:
                 reader = csv.reader(f, delimiter=self.delimiter)
-
                 try:
                     headers = next(reader)
                 except StopIteration:
                     self.is_connected = False
                     return False
 
-                sanitized_headers = [h.strip().replace(" ", "_") for h in headers]
+                sanitized_headers = []
+                for i, h in enumerate(headers):
+                    clean_name = h.strip().replace(" ", "_").replace(".", "_").replace("-", "_")
+                    
+                    if not clean_name:
+                        clean_name = "id" if i == 0 else f"column_{i}"
+                    
+                    sanitized_headers.append(clean_name)
 
                 with sqlite3.connect(self.temp_db_path) as conn:
                     cols_def = ", ".join([f'"{h}" TEXT' for h in sanitized_headers])
                     conn.execute(f'CREATE TABLE "{self.table_name}" ({cols_def})')
-
+                    
                     placeholders = ", ".join(["?" for _ in sanitized_headers])
-                    insert_query = (
-                        f'INSERT INTO "{self.table_name}" VALUES ({placeholders})'
-                    )
-
+                    insert_query = f'INSERT INTO "{self.table_name}" VALUES ({placeholders})'
+                    
                     conn.executemany(insert_query, reader)
                     conn.commit()
 
@@ -75,7 +80,8 @@ class CSVManager(BaseDataManager):
             self.is_connected = False
             return False
 
-        except Exception:
+        except Exception as e:
+            print(f"DEBUG: CSV connect error: {str(e)}")
             self.is_connected = False
             return False
 
@@ -103,8 +109,16 @@ class CSVManager(BaseDataManager):
             return create_response(
                 success=False, message="Failed to process CSV - Engine not initialized"
             )
-
-        response = self.sqlite_engine.get_full_schema()
+            
+        try:
+            response = self.sqlite_engine.get_full_schema(include_samples=True)
+        except Exception as e:
+            print(f"DEBUG: SQLite engine schema error: {str(e)}")
+            return create_response(
+                success=False, 
+                message="Internal SQLite error during schema extraction", 
+                error=str(e)
+            )
 
         if response.get("success"):
             size_mb = calculate_csv_size_mb(self.csv_path)

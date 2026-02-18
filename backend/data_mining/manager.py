@@ -20,14 +20,17 @@ class DataCollectionManager:
     
     @staticmethod
     def get_manager(source_type: str):
+        print("inside get_manager")
         return MANAGERS.get(source_type.lower())
     
     @staticmethod
     def get_supported_types() -> list:
+        print("inside get_supported_types")
         return [t.value for t in MANAGERS.keys()]
     
     @staticmethod
     def test_connection(source_type: str, config: Dict) -> Dict[str, Any]:
+        print("inside test_connection")
         manager_class = DataCollectionManager.get_manager(source_type)
         if not manager_class:
             return create_response(False, f"Unsupported data source type: {source_type}")
@@ -40,6 +43,7 @@ class DataCollectionManager:
     
     @staticmethod
     def connect(source_type: str, config: Dict) -> Optional[Any]:
+        print("inside connect")
         manager_class = DataCollectionManager.get_manager(source_type)
         if not manager_class:
             return None
@@ -51,6 +55,7 @@ class DataCollectionManager:
     
     @staticmethod
     def get_schema(source_type: str, config: Dict) -> Dict[str, Any]:
+        print("inside get_schema")
         manager_class = DataCollectionManager.get_manager(source_type)
         if not manager_class:
             return create_response(False, "Unsupported type")
@@ -68,6 +73,7 @@ class DataCollectionManager:
     
     @staticmethod
     def execute_query(source_type: str, config: Dict, query: str) -> Dict[str, Any]:
+        print("inside execute_query")
         manager_class = DataCollectionManager.get_manager(source_type)
         if not manager_class:
             return create_response(False, "Unsupported type")

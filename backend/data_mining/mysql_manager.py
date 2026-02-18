@@ -31,18 +31,19 @@ class MySQLManager(BaseDataManager):
             "password": self.password,
             "database": self.database,
             "charset": self.charset,
-            "connection_timeout": self.connect_timeout,
+            "connect_timeout": self.connect_timeout,
         }
 
     def connect(self) -> bool:
         if self.conn and self.conn.is_connected():
             return True
-
+        
         try:
             self.conn = mysql.connector.connect(**self._get_connection_params())
             self.is_connected = self.conn.is_connected()
             return self.is_connected
-        except Error:
+        except Error as e:
+            print(f"DEBUG: Connection failed: {e}")
             self.is_connected = False
             return False
 
@@ -81,13 +82,12 @@ class MySQLManager(BaseDataManager):
             rows = cursor.fetchall()
 
             schema_map = {}
-
             for row in rows:
-                t_name = row["table_name"]
+                t_name = row["TABLE_NAME"]
                 if t_name not in schema_map:
                     schema_map[t_name] = {"row_count": 0, "columns": []}
 
-                column_info = f"{row['column_name']}: {row['data_type']}"
+                column_info = f"{row['COLUMN_NAME']}: {row['DATA_TYPE']}"
                 schema_map[t_name]["columns"].append(column_info)
 
             for t_name in schema_map.keys():

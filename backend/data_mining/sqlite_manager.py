@@ -16,6 +16,7 @@ class SQLiteManager(BaseDataManager):
     def connect(self) -> bool:
         if self.conn:
             return True
+        
 
         if not self.db_path or not os.path.exists(self.db_path):
             self.is_connected = False
@@ -66,7 +67,7 @@ class SQLiteManager(BaseDataManager):
                 success=False, message="SQLite Connection Error", error=str(e)
             )
 
-    def get_full_schema(self) -> Any:
+    def get_full_schema(self, include_samples: bool = False) -> Any:
         if not self.connect():
             return create_response(success=False, message="Database disconnected")
 
@@ -78,13 +79,24 @@ class SQLiteManager(BaseDataManager):
             table_names = [row[0] for row in cursor.fetchall()]
 
             schema_map = {}
-
             for table in table_names:
                 cursor.execute(f"PRAGMA table_info('{table}')")
-                columns = [f"{r['name']}: {r['type']}" for r in cursor.fetchall()]
-
+                col_rows = cursor.fetchall()
+                
                 cursor.execute(f"SELECT COUNT(*) FROM '{table}'")
                 row_count = cursor.fetchone()[0]
+
+                if include_samples and row_count > 0:
+                    cursor.execute(f"SELECT * FROM '{table}' LIMIT 1")
+                    sample_data = cursor.fetchone()
+                    
+                    columns = []
+                    for i, r in enumerate(col_rows):
+                        col_name = r['name']
+                        val = sample_data[i] if sample_data else "N/A"
+                        columns.append(f"{col_name} (e.g., '{val}')")
+                else:
+                    columns = [f"{r['name']}: {r['type']}" for r in col_rows]
 
                 schema_map[table] = {"row_count": row_count, "columns": columns}
 
