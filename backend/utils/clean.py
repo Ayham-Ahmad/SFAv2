@@ -1,6 +1,7 @@
 import re
 import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any
+import pandas as pd
 
 from api.constants import FORBIDDEN_KEYWORDS
 
@@ -47,3 +48,22 @@ def extract_react_components(raw_llm_text: str) -> Dict[str, Any]:
 
 def extract_final_outputs(output: str):
     pass
+
+def sanitize_multitent_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return df
+
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            df[col] = df[col].apply(
+                lambda x: list(x.values())[0] if isinstance(x, dict) and any(k in x for k in ['$numberDouble', '$numberInt', '$numberLong']) else x
+            )
+        
+        try:
+            converted = pd.to_numeric(df[col], errors='coerce')
+            if not converted.isna().all():
+                df[col] = converted
+        except Exception:
+            continue
+
+    return df.where(pd.notnull(df), None)

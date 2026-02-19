@@ -126,7 +126,7 @@ class TentCRUD:
     @staticmethod
     def get_tables_schema(
         db: Session, company_id: int, selected_tent_ids: List[int]
-    ) -> Dict[str, List[str]]:
+    ) -> Dict[int, Dict[str, List[str]]]:
         
         if isinstance(selected_tent_ids, int):
             selected_tent_ids = [selected_tent_ids]
@@ -152,7 +152,7 @@ class TentCRUD:
                 for table_name, meta in tables_metadata.items()
             }
             
-        tables_dict[tent.db_id] = simplified_tables
+            tables_dict[tent.db_id] = simplified_tables
 
         return tables_dict
 
