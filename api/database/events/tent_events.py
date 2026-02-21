@@ -155,6 +155,10 @@ class TentCRUD:
             tables_dict[tent.db_id] = simplified_tables
 
         return tables_dict
+    
+    @staticmethod
+    def get_by_name(db: Session, db_name: str):
+        return db.query(TentDatabase).filter(TentDatabase.db_name == db_name).first()
 
     @staticmethod
     def get_all(db: Session) -> List[TentDatabase]:

@@ -20,13 +20,25 @@ async def lifespan(app: FastAPI):
     print("Connecting to Database...")
     Base.metadata.create_all(bind=engine)
 
-    print("Warming up AI modules...")
+    print("Warming up AI modules and Vector DB...")
     from langchain_groq import ChatGroq
+    from backend.core.RAG.db_loader import load_vector_db 
+
+    vector_db = load_vector_db()
+    
+    if vector_db:
+        app.state.vector_db = vector_db
+        print("✅ Vector DB attached to app.state.")
+
     print("Warmup complete")
     yield
 
     print("Disposing Database Engine...")
     engine.dispose()
+    
+    if hasattr(app.state, "vector_db"):
+        del app.state.vector_db
+        print("Cleared Vector DB from memory.")
 
 sentry_sdk.init(
     dsn=settings.SENTRY_SDK_DNS,

@@ -19,6 +19,7 @@ class EnvSettings(BaseSettings):
     DB_ENCRYPTION_KEY: str = Field(default_factory=lambda: os.getenv("DB_ENCRYPTION_KEY"))
     SENTRY_SDK_DNS: str = Field(default_factory=lambda: os.getenv("SENTRY_SDK_DNS"))
     GROQ_API_KEY: str = Field(default_factory=lambda: os.getenv("GROQ_API_KEY"))
+    OPENAI_API_KEY: str = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY"))
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

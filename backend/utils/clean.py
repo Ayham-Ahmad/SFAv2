@@ -67,3 +67,15 @@ def sanitize_multitent_dataframe(df: pd.DataFrame) -> pd.DataFrame:
             continue
 
     return df.where(pd.notnull(df), None)
+
+
+def clean_and_parse_tools(raw_text: str) -> dict:
+    try:
+        json_pattern = r"```(?:json)?\s*(.*?)\s*```"
+        match = re.search(json_pattern, raw_text, re.DOTALL)
+        clean_text = match.group(1) if match else raw_text
+        
+        return json.loads(clean_text.strip())
+    except Exception as e:
+        print(f"❌ JSON Parsing Error: {e}")
+        return None

@@ -13,27 +13,36 @@ def execute_multitent_queries(db: Session, company_id: int, query_mapping: Dict[
     errors = []
 
     try:
-        for db_id, tasks in query_mapping.items():
+        for db_name, payload in query_mapping.items():
+            tent = TentCRUD.get_by_name(db, db_name)
             
-            tent = TentCRUD.get_by_id(db, db_id)
+            
             if not tent or tent.company_id != company_id:
-                errors.append(f"Unauthorized or missing Tent ID: {db_id}")
+                err_msg = f"Unauthorized or missing Tent: {db_name}"
+                errors.append(err_msg)
+                sentry_sdk.capture_message(err_msg, level="warning")
                 continue
 
+            db_id = tent.db_id
             db_key = str(db_id)
             if db_key not in final_results["results"]:
                 final_results["results"][db_key] = []
-
-            for task in tasks:
-                sql_query = task.get("query")
                 
+            queries = payload.get("queries", [])
+
+            for sql_query in queries:
                 if not sql_query:
                     continue
 
                 execution_response = MultiTenantDBManager.execute_query_for_tent(tent, sql_query.strip())
                 
                 if not execution_response.get("success"):
-                    errors.append({"db_id": db_id, "error": execution_response.get("error")})
+                    db_err = execution_response.get("error")
+                    errors.append({"db_id": db_id, "error": db_err})
+                    with sentry_sdk.push_scope() as scope:
+                        scope.set_tag("tenant_id", db_id)
+                        scope.set_extra("query", sql_query)
+                        sentry_sdk.capture_message(f"DB Execution Failed for Tenant {db_id}", level="error")
                     continue
                 
                 payload = execution_response.get("data", {})
@@ -54,15 +63,14 @@ def execute_multitent_queries(db: Session, company_id: int, query_mapping: Dict[
                         converted = pd.to_numeric(df[col], errors='coerce')
                         if not converted.isna().all():
                             df[col] = converted
-                    except:
-                        print("Error: Couldn't convert to numeric")
+                    except Exception as e:
+                        sentry_sdk.capture_exception(e)
                         continue
                 
                 numeric_cols = df.select_dtypes(include=['number']).columns
                 df[numeric_cols] = df[numeric_cols].round(2)
                 
                 df_final = df.where(pd.notnull(df), None)
-                
                 final_results["results"][db_key].append(df_final.head(100).to_dict(orient="records"))
 
     except Exception as e:
