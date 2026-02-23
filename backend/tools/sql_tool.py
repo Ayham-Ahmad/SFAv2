@@ -13,7 +13,7 @@ def execute_multitent_queries(db: Session, company_id: int, query_mapping: Dict[
     errors = []
 
     try:
-        for db_name, payload in query_mapping.items():
+        for db_name, queries in query_mapping.items():
             tent = TentCRUD.get_by_name(db, db_name)
             
             
@@ -27,8 +27,6 @@ def execute_multitent_queries(db: Session, company_id: int, query_mapping: Dict[
             db_key = str(db_id)
             if db_key not in final_results["results"]:
                 final_results["results"][db_key] = []
-                
-            queries = payload.get("queries", [])
 
             for sql_query in queries:
                 if not sql_query:

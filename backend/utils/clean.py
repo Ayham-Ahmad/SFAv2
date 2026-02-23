@@ -1,7 +1,8 @@
 import re
 import json
-from typing import Dict, Any
+from typing import Dict, Any, List
 import pandas as pd
+import sentry_sdk
 
 from api.constants import FORBIDDEN_KEYWORDS
 
@@ -47,6 +48,7 @@ def extract_react_components(raw_llm_text: str) -> Dict[str, Any]:
     }
 
 def extract_final_outputs(output: str):
+    return output
     pass
 
 def sanitize_multitent_dataframe(df: pd.DataFrame) -> pd.DataFrame:
@@ -79,3 +81,71 @@ def clean_and_parse_tools(raw_text: str) -> dict:
     except Exception as e:
         print(f"❌ JSON Parsing Error: {e}")
         return None
+    
+def clean_tables_schema(tables_schema: Dict[int, Dict[str, List[str]]]) -> Dict[int, Dict[str, List[str]]]:
+    return {
+        db_id: {
+            table_name: [col.split(':')[0].strip() for col in columns]
+            for table_name, columns in tables.items()
+        }
+        for db_id, tables in tables_schema.items()
+    }
+    
+def clean_tables_schema_for_tableAgent(tables_schema, max_chars: int = 4000, max_name_len: int = 25):
+    """
+    1. make sure all tables names max char count <= max_name_len.
+    2. make sure the max char len for all the tables schema <= max_chars.
+    3. make sure all tables names has unique name.
+    
+    Input: {db_id: [{table_name: [{column_name: column_type}]}]}
+    Output: {db_id: [tables_name]}
+    """
+    summary = {}
+    for db_id, tables in tables_schema.items():
+        table_names = list(tables.keys())
+        
+        unique_truncated_list = []
+        seen_names = {}
+        current_total_chars = 0
+        
+        for name in table_names:
+            clean_name = name[:max_name_len] if len(name) > max_name_len else name
+            
+            if clean_name in seen_names:
+                seen_names[clean_name] += 1
+                suffix = f"~{seen_names[clean_name]}"
+                clean_name = clean_name[:max_name_len - len(suffix)] + suffix
+            else:
+                seen_names[clean_name] = 0
+            
+            if current_total_chars + len(clean_name) + 4 > max_chars:
+                unique_truncated_list.append("...LIST_TRUNCATED...")
+                break
+            
+            unique_truncated_list.append(clean_name)
+            current_total_chars += len(clean_name) + 4
+            
+        summary[db_id] = unique_truncated_list
+            
+    return summary
+
+
+def parse_table_agent_response(raw_response: str, tables_schema: Dict[int, List[str]], tents_ids: List[int]) -> Dict[int, List[str]]:
+    try:
+        json_matches = re.findall(r"\{[\s\S]*?\}", raw_response)
+        if json_matches:
+            json_str = next((m for m in reversed(json_matches) if re.search(r'"\d+"', m)), json_matches[-1])
+            raw_data = json.loads(json_str.replace("'", '"'))
+            
+            final_mapping = {}
+            for db_id_str, tables in raw_data.items():
+                db_id = int(db_id_str)
+                if db_id in tables_schema:
+                    table_list = tables if isinstance(tables, list) else []
+                    final_mapping[db_id] = [t for t in table_list if t in tables_schema[db_id]]
+            return final_mapping
+            
+        return {tid: [] for tid in tents_ids}
+    except Exception as e:
+        sentry_sdk.capture_exception(e)
+        return {tid: [] for tid in tents_ids}

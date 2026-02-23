@@ -1,3 +1,10 @@
+"""
+This agent is to check the safety of the user query to prevent prompt injection
+
+Input: user query
+Output: Safe or not (bool)
+"""
+
 import sentry_sdk
 from ..core.llm_client import call_llm
 from api.constants import AIModel

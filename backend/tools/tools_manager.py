@@ -38,7 +38,6 @@ class ToolsManager:
             return "Error: Could not parse your tool requests. Please ensure you output valid JSON."
 
         tools_input = data.get("tools", {})
-        print(3, tools_input, '\n')
         results = {}
         
         sql_payload = extract_sql_tool_inputs(tools_input)
@@ -55,7 +54,6 @@ class ToolsManager:
                 results["advisory"] = "Error: Knowledge Base not initialized."
 
         math_payload = extract_math_tool_inputs(tools_input)
-        print(4, math_payload)
         if math_payload:
             for calculation in math_payload:
                 query_index = calculation[0]
@@ -63,16 +61,11 @@ class ToolsManager:
                 formula = calculation[2]
                 
                 results["math"] = calculate_on_multitent_data(results.get("sql"), formula)
-        
-        if results.get('math').get('success'):
-            print(results["math"])
 
         graph_payload = extract_graph_tool_inputs(tools_input)
-        print(graph_payload)
         if graph_payload:
             results["graph"] = select_graph_template(graph_payload, results.get("sql"))
             
-        print( results["graph"])
 
         return ToolsManager.format_observation_prompt(results, data.get("ignore_indices"))
 

@@ -41,7 +41,7 @@ def calculate_on_multitent_data(sql_results: Dict[str, List[List[Dict[str, Any]]
                         .round(2)
                     )
     
-                    updated_results[db_id].append(df.to_dict(orient="records"))
+                    updated_results[db_id].append(df[[new_column_name]].to_dict(orient="records"))
                 except Exception as calc_err:
                     with sentry_sdk.push_scope() as scope:
                         scope.set_tag("db_id", db_id)
