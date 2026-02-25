@@ -25,9 +25,7 @@ def call_llm(prompt: str, model: str, temperature: float = 0.0, max_tokens: int 
         sentry_sdk.capture_exception(e)
         return "Final Answer: I encountered a technical issue connecting to my core services. Please try again shortly."
     
-async def call_agent(prompt: str, model: str, total_tokens: int) -> str:
-    sentry_sdk.capture_message(f"[SFA Agent] Initialized LLM: {model}", level="debug")
-    
+async def call_agent(prompt: str, model: str, total_tokens: int) -> str:    
     try:
         llm = ChatGroq(
             api_key=settings.GROQ_API_KEY,
@@ -45,7 +43,7 @@ async def call_agent(prompt: str, model: str, total_tokens: int) -> str:
             if tokens > 0:
                 total_tokens += tokens
                 
-        return response.content, tokens
+        return response.content, total_tokens
 
     except Exception as e:
         error_msg = str(e).lower()
@@ -64,7 +62,7 @@ async def call_agent(prompt: str, model: str, total_tokens: int) -> str:
                     max_tokens=800,
                     stop=["Observation:", "\nObservation:"]
                 )
-                return fallback_response.choices[0].message.content.strip()
+                return fallback_response.choices[0].message.content.strip(), total_tokens
             except Exception as fallback_error:
                 sentry_sdk.capture_exception(fallback_error)
                 return "Final Answer: The AI service is currently busy. Please try again in a few minutes."

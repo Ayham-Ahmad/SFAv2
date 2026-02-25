@@ -7,23 +7,24 @@ from api.database.events.tent_events import TentCRUD
 from backend.services.tenant_manager import MultiTenantDBManager
 from api.constants import DatabaseType
 from ..utils.clean import sanitize_multitent_dataframe
+from ..utils.responses import create_response
 
 def execute_multitent_queries(db: Session, company_id: int, query_mapping: Dict[int, List[Dict[str, Any]]]) -> Dict[str, Any]:
     final_results = {"results": {}}
     errors = []
-
+    
     try:
-        for db_name, queries in query_mapping.items():
-            tent = TentCRUD.get_by_name(db, db_name)
+        for db_id, queries in query_mapping.items():
+            tent = TentCRUD.get_by_id(db, int(db_id))
             
             
             if not tent or tent.company_id != company_id:
-                err_msg = f"Unauthorized or missing Tent: {db_name}"
+                err_msg = f"Unauthorized or missing Tent: {db_id}"
                 errors.append(err_msg)
                 sentry_sdk.capture_message(err_msg, level="warning")
+                print(err_msg)
                 continue
 
-            db_id = tent.db_id
             db_key = str(db_id)
             if db_key not in final_results["results"]:
                 final_results["results"][db_key] = []
@@ -31,8 +32,10 @@ def execute_multitent_queries(db: Session, company_id: int, query_mapping: Dict[
             for sql_query in queries:
                 if not sql_query:
                     continue
-
+                
                 execution_response = MultiTenantDBManager.execute_query_for_tent(tent, sql_query.strip())
+                
+                print(execution_response)
                 
                 if not execution_response.get("success"):
                     db_err = execution_response.get("error")
@@ -74,8 +77,9 @@ def execute_multitent_queries(db: Session, company_id: int, query_mapping: Dict[
     except Exception as e:
         sentry_sdk.capture_exception(e)
         errors.append({"error": "Internal executor error", "details": str(e)})
+        print("Error 2")
 
     if errors:
         final_results["errors"] = errors
-
-    return final_results
+        
+    return create_response(True, message="Unknown Error", data=final_results)

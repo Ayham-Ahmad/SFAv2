@@ -3,8 +3,11 @@ import json
 from typing import Dict, Any, List
 import pandas as pd
 import sentry_sdk
+from sqlalchemy.orm import Session
 
 from api.constants import FORBIDDEN_KEYWORDS
+from api.database.events import TentCRUD
+from api.database.models import TentDatabase
 
 def clean_sql(raw_sql: str) -> str:
     raw_sql = re.sub(r"```sql|```", "", raw_sql)
@@ -130,7 +133,7 @@ def clean_tables_schema_for_tableAgent(tables_schema, max_chars: int = 4000, max
     return summary
 
 
-def parse_table_agent_response(raw_response: str, tables_schema: Dict[int, List[str]], tents_ids: List[int]) -> Dict[int, List[str]]:
+def parse_table_agent_response(db: Session, raw_response: str, tables_schema: Dict[int, List[str]], tents_ids: List[int]) -> Dict[int, List[str]]:
     try:
         json_matches = re.findall(r"\{[\s\S]*?\}", raw_response)
         if json_matches:
@@ -142,10 +145,45 @@ def parse_table_agent_response(raw_response: str, tables_schema: Dict[int, List[
                 db_id = int(db_id_str)
                 if db_id in tables_schema:
                     table_list = tables if isinstance(tables, list) else []
-                    final_mapping[db_id] = [t for t in table_list if t in tables_schema[db_id]]
+                    tent_type = TentCRUD.get_by_id(db, db_id).db_type
+                    final_mapping[db_id] = {tent_type: [t for t in table_list if t in tables_schema[db_id]]}
             return final_mapping
             
         return {tid: [] for tid in tents_ids}
     except Exception as e:
         sentry_sdk.capture_exception(e)
         return {tid: [] for tid in tents_ids}
+    
+def prepare_tents_summary(tents: List[TentDatabase]):
+    valid_ids = []
+    for t in tents:
+        tents_summary = "\n".join(f"ID: {t.db_id} | Name: {t.db_name}")
+        valid_ids.append(t.db_id)
+    return tents_summary, valid_ids
+
+def clean_tents_response(response: str, valid_ids: List[int]):
+    match = re.search(r"\[.*\]", response)
+    if match:
+        selected_ids = json.loads(match.group(0).strip())
+        return [t_id for t_id in selected_ids if t_id in valid_ids]
+    return []
+        
+        
+def get_chosen_tables_schema(tables, tents_schema):
+    final_selected_schema = {}
+
+    for db_id, db_info in tables.items():
+        db_type = next(iter(db_info.keys()))
+        selected_table_names = db_info[db_type]
+        
+        tables_with_columns = []
+        
+        for table_name in selected_table_names:
+            if db_id in tents_schema and table_name in tents_schema[db_id]:
+                raw_columns = tents_schema[db_id][table_name]
+                clean_columns = [col.split(':')[0].strip() for col in raw_columns]
+                tables_with_columns.append({table_name: clean_columns})
+        
+        final_selected_schema[db_id] = {db_type: tables_with_columns}
+                
+    return final_selected_schema

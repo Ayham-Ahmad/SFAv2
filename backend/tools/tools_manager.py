@@ -1,12 +1,12 @@
 from sqlalchemy.orm import Session
 from ..utils.clean import clean_and_parse_tools
-from .sql_tool import execute_multitent_queries
+from .retrieve_tool import execute_multitent_queries
 from .calculator_tool import calculate_on_multitent_data
 from .graph_tool import select_graph_template
 from .advisory_tool import AdvisoryRAGTool
 
 def extract_sql_tool_inputs(tools_input: dict) -> dict | None:
-    sql_data = tools_input.get("sql")
+    sql_data = tools_input.get("retrieval")
     if isinstance(sql_data, dict) and sql_data:
         return sql_data
     return None
@@ -42,7 +42,7 @@ class ToolsManager:
         
         sql_payload = extract_sql_tool_inputs(tools_input)
         if sql_payload:
-            results["sql"] = execute_multitent_queries(db, company_id, sql_payload)
+            results["retrieval"] = execute_multitent_queries(db, company_id, sql_payload)
             
         advisory_payload = extract_advisory_tool_inputs(tools_input)
         if advisory_payload and request:
@@ -60,11 +60,11 @@ class ToolsManager:
                 columns = calculation[1]
                 formula = calculation[2]
                 
-                results["math"] = calculate_on_multitent_data(results.get("sql"), formula)
+                results["math"] = calculate_on_multitent_data(results.get("retrieval"), formula)
 
         graph_payload = extract_graph_tool_inputs(tools_input)
         if graph_payload:
-            results["graph"] = select_graph_template(graph_payload, results.get("sql"))
+            results["graph"] = select_graph_template(graph_payload, results.get("retrieval"))
             
 
         return ToolsManager.format_observation_prompt(results, data.get("ignore_indices"))
@@ -73,8 +73,8 @@ class ToolsManager:
     def format_observation_prompt(results: dict, ignore_indices: list = None) -> str:
         prompt = "### OBSERVATIONS FROM TOOLS\n"
         
-        if results.get("sql"):
-            prompt += f"\n[SQL DATA]:\n{results['sql']}\n"
+        if results.get("retrieval"):
+            prompt += f"\n[retrieval]:\n{results['retrieval']}\n"
         
         if results.get("advisory"):
             prompt += f"\n{results['advisory']}\n"
