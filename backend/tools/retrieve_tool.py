@@ -6,10 +6,10 @@ from sqlalchemy.orm import Session
 from api.database.events.tent_events import TentCRUD
 from backend.services.tenant_manager import MultiTenantDBManager
 from api.constants import DatabaseType
-from ..utils.clean import sanitize_multitent_dataframe
+from ..utils.clean import sanitize_multiTent_dataframe, is_query_safe
 from ..utils.responses import create_response
 
-def execute_multitent_queries(db: Session, company_id: int, query_mapping: Dict[int, List[Dict[str, Any]]]) -> Dict[str, Any]:
+def execute_multiTent_queries(db: Session, company_id: int, query_mapping: Dict[int, List[Dict[str, Any]]]) -> Dict[str, Any]:
     final_results = {"results": {}}
     errors = []
     
@@ -33,10 +33,17 @@ def execute_multitent_queries(db: Session, company_id: int, query_mapping: Dict[
                 if not sql_query:
                     continue
                 
+                raw_query_str = sql_query.get("query", "") if isinstance(sql_query, dict) else sql_query
+                
+                is_safe, safety_error = is_query_safe(raw_query_str, tent.db_type)
+                
+                if not is_safe:
+                    errors.append({"db_id": db_id, "error": safety_error})
+                    final_results["results"][db_key].append([{"error": safety_error}])
+                    continue
+                
                 execution_response = MultiTenantDBManager.execute_query_for_tent(tent, sql_query.strip())
-                
-                print(execution_response)
-                
+                                
                 if not execution_response.get("success"):
                     db_err = execution_response.get("error")
                     errors.append({"db_id": db_id, "error": db_err})
@@ -44,6 +51,8 @@ def execute_multitent_queries(db: Session, company_id: int, query_mapping: Dict[
                         scope.set_tag("tenant_id", db_id)
                         scope.set_extra("query", sql_query)
                         sentry_sdk.capture_message(f"DB Execution Failed for Tenant {db_id}", level="error")
+                            
+                    final_results["results"][db_key].append([{"error": db_err}])
                     continue
                 
                 payload = execution_response.get("data", {})
@@ -57,7 +66,7 @@ def execute_multitent_queries(db: Session, company_id: int, query_mapping: Dict[
                 df = pd.DataFrame(rows, columns=columns)
                 
                 if tent.db_type == DatabaseType.MONGODB:
-                    df = sanitize_multitent_dataframe(df)
+                    df = sanitize_multiTent_dataframe(df)
                     
                 for col in df.columns:
                     try:
@@ -82,4 +91,4 @@ def execute_multitent_queries(db: Session, company_id: int, query_mapping: Dict[
     if errors:
         final_results["errors"] = errors
         
-    return create_response(True, message="Unknown Error", data=final_results)
+    return create_response(success=True, data=final_results, error=final_results.get("errors"))

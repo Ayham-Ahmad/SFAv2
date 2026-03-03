@@ -49,6 +49,7 @@ class CompanySettings(BaseModel):
     tent_config: CompanyTentSettings = Field(default_factory=CompanyTentSettings)
     manager_config: CompanyManagerSettings = Field(default_factory=CompanyManagerSettings) # Added
     allowed_models: List[AIModel] = [] 
+    
 class CompanyBase(BaseSchema):
     company_name: str
     plan: CompanyPlan

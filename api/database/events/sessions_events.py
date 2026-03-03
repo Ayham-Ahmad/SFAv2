@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from pydantic import BaseModel
-from typing import Union
+from typing import Union, Optional
 
 from ..models import Session as SessionModel, User
 from ...utils import to_dict
@@ -33,7 +33,7 @@ class SessionCRUD:
             .all()
 
     @staticmethod
-    def get_active_by_user(db: Session, user_id: int):
+    def get_active_by_user(db: Session, user_id: int) -> Optional[SessionModel]:
         return db.query(SessionModel).filter(
             SessionModel.user_id == user_id, 
             SessionModel.is_active == True

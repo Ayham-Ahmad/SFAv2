@@ -1,24 +1,10 @@
-import re
-import json
+import re, ast, json, pandas as pd, sentry_sdk 
 from typing import Dict, Any, List
-import pandas as pd
-import sentry_sdk
 from sqlalchemy.orm import Session
 
-from api.constants import FORBIDDEN_KEYWORDS
+from api.constants import FORBIDDEN_KEYWORDS, DatabaseType
 from api.database.events import TentCRUD
 from api.database.models import TentDatabase
-
-def clean_sql(raw_sql: str) -> str:
-    raw_sql = re.sub(r"```sql|```", "", raw_sql)
-    return raw_sql.split(";")[0].strip()
-
-def validate_read_only(sql: str) -> bool:
-    normalized = sql.upper()
-    for keyword in FORBIDDEN_KEYWORDS:
-        if re.search(r'\b' + re.escape(keyword) + r'\b', normalized):
-            return False
-    return True
     
 def extract_react_components(raw_llm_text: str) -> Dict[str, Any]:
     thought_match = re.search(r"Thought:\s*(.*?)(?=\nAction:|\nFinal Answer:|$)", raw_llm_text, re.DOTALL)
@@ -28,21 +14,23 @@ def extract_react_components(raw_llm_text: str) -> Dict[str, Any]:
         final_answer = raw_llm_text.split("Final Answer:")[-1].strip()
         return {
             "thought": thought,
-            "final_answer": final_answer,
-            "action": None
+            "action": "Final Answer",
+            "action_input": final_answer 
         }
 
-    action_match = re.search(r"Action:\s*(.*)", raw_llm_text)
-    action_input_match = re.search(r"Action Input:\s*(\{.*\})", raw_llm_text, re.DOTALL)
+    action_match = re.search(r"Action:\s*(.*?)(?=\nAction Input:|$)", raw_llm_text, re.DOTALL)
+    action_input_match = re.search(r"Action Input:\s*(.*?)(?=\nObservation:|\nThought:|\nFinal Answer:|$)", raw_llm_text, re.DOTALL)
 
     action = action_match.group(1).strip() if action_match else None
+    action_input_raw = action_input_match.group(1).strip() if action_input_match else ""
     
     action_input = None
-    if action_input_match:
+    if action_input_raw:
+        clean_json_str = re.sub(r"^```(?:json)?|```$", "", action_input_raw, flags=re.MULTILINE).strip()
         try:
-            action_input = json.loads(action_input_match.group(1))
+            action_input = json.loads(clean_json_str)
         except json.JSONDecodeError:
-            action_input = {"error": "Invalid JSON in Action Input"}
+            action_input = {"error": "Invalid JSON in Action Input", "raw": action_input_raw}
 
     return {
         "thought": thought,
@@ -50,11 +38,7 @@ def extract_react_components(raw_llm_text: str) -> Dict[str, Any]:
         "action_input": action_input
     }
 
-def extract_final_outputs(output: str):
-    return output
-    pass
-
-def sanitize_multitent_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+def sanitize_multiTent_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return df
 
@@ -85,16 +69,7 @@ def clean_and_parse_tools(raw_text: str) -> dict:
         print(f"❌ JSON Parsing Error: {e}")
         return None
     
-def clean_tables_schema(tables_schema: Dict[int, Dict[str, List[str]]]) -> Dict[int, Dict[str, List[str]]]:
-    return {
-        db_id: {
-            table_name: [col.split(':')[0].strip() for col in columns]
-            for table_name, columns in tables.items()
-        }
-        for db_id, tables in tables_schema.items()
-    }
-    
-def clean_tables_schema_for_tableAgent(tables_schema, max_chars: int = 4000, max_name_len: int = 25):
+def clean_tables_schema(tables_schema, max_chars: int = 4000, max_name_len: int = 25):
     """
     1. make sure all tables names max char count <= max_name_len.
     2. make sure the max char len for all the tables schema <= max_chars.
@@ -145,8 +120,10 @@ def parse_table_agent_response(db: Session, raw_response: str, tables_schema: Di
                 db_id = int(db_id_str)
                 if db_id in tables_schema:
                     table_list = tables if isinstance(tables, list) else []
-                    tent_type = TentCRUD.get_by_id(db, db_id).db_type
-                    final_mapping[db_id] = {tent_type: [t for t in table_list if t in tables_schema[db_id]]}
+                    tent = TentCRUD.get_by_id(db, db_id)
+                    if tent:
+                        final_mapping[db_id] = {tent.db_type: [t for t in table_list if t in tables_schema[db_id]]}
+                        
             return final_mapping
             
         return {tid: [] for tid in tents_ids}
@@ -155,19 +132,20 @@ def parse_table_agent_response(db: Session, raw_response: str, tables_schema: Di
         return {tid: [] for tid in tents_ids}
     
 def prepare_tents_summary(tents: List[TentDatabase]):
-    valid_ids = []
-    for t in tents:
-        tents_summary = "\n".join(f"ID: {t.db_id} | Name: {t.db_name}")
-        valid_ids.append(t.db_id)
+    valid_ids = [t.db_id for t in tents]
+    tents_summary = "\n".join([f"ID: {t.db_id} | Name: {t.db_name}" for t in tents])
     return tents_summary, valid_ids
 
 def clean_tents_response(response: str, valid_ids: List[int]):
-    match = re.search(r"\[.*\]", response)
+    match = re.search(r"\[.*?\]", response) 
     if match:
-        selected_ids = json.loads(match.group(0).strip())
-        return [t_id for t_id in selected_ids if t_id in valid_ids]
+        try:
+            selected_ids = ast.literal_eval(match.group(0).strip())
+            if isinstance(selected_ids, list): 
+                return [int(t_id) for t_id in selected_ids if int(t_id) in valid_ids]
+        except (ValueError, SyntaxError):
+            return []
     return []
-        
         
 def get_chosen_tables_schema(tables, tents_schema):
     final_selected_schema = {}
@@ -186,4 +164,28 @@ def get_chosen_tables_schema(tables, tents_schema):
         
         final_selected_schema[db_id] = {db_type: tables_with_columns}
                 
-    return final_selected_schema
+    return final_selected_schema        
+
+def is_query_safe(query: str, db_type: str) -> tuple[bool, str]:
+    if not query or not isinstance(query, str):
+        return False, "Empty or invalid query format."
+
+    if db_type == DatabaseType.MONGODB:
+        forbidden_mongo = ["drop(", "deleteMany(", "deleteOne(", "remove(", "update", "insert"]
+        if any(cmd in query for cmd in forbidden_mongo):
+            return False, "Forbidden MongoDB destructive command detected."
+        return True, ""
+
+    normalized = query.upper().strip()
+    
+    for keyword in FORBIDDEN_KEYWORDS:
+        if re.search(r'\b' + re.escape(keyword) + r'\b', normalized):
+            return False, f"Forbidden SQL command detected: {keyword}. Only SELECT is allowed."
+        
+    if "SELECT *" in normalized or "SELECT  *" in normalized:
+        return False, "Prohibited use of 'SELECT *'. You MUST specify exact column names."
+        
+    if "LIMIT" not in normalized and "COUNT(" not in normalized:
+        return False, "Query missing LIMIT clause. All queries must include a LIMIT."
+
+    return True, ""

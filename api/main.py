@@ -11,6 +11,7 @@ from api.routes.tents import router as tents_router
 from api.routes.users import router as me_router
 from api.routes.admin import router as admin_router
 from api.routes.super_admin import router as super_admin_router
+from api.routes.chat import router as chat_router
 
 from .database.database import engine, Base
 
@@ -61,6 +62,7 @@ app.include_router(tents_router)
 app.include_router(me_router)
 app.include_router(admin_router)
 app.include_router(super_admin_router)
+app.include_router(chat_router)
 
 app.mount("/static", StaticFiles(directory="./frontend/static"), name="static")
 

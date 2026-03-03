@@ -1,6 +1,6 @@
-from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
+
 from ...constants import AIModel, InteractionStatus
 from .base import BaseSchema
 
@@ -15,3 +15,31 @@ class InteractionOut(BaseSchema):
     api_call_count: Optional[int] = None
     memory_usage: Optional[float] = None
     created_at: datetime
+    
+class InteractionCreate(BaseSchema):
+    session_id: int
+
+class ChatRequest(BaseSchema):
+    user_id: int
+    message: str
+    status: InteractionStatus = InteractionStatus.PENDING
+    
+class Performance(BaseSchema):
+    response_time: float
+    token_count: int
+    api_call_count: int
+    memory_usage: float
+    
+def get_usage_metrics_dict() -> dict:
+    return {
+        "p_tokens": 0, 
+        "c_tokens": 0, 
+        "total_tokens": 0, 
+        "api_call": 0, 
+        "steps": {
+            "retrieval": 0, 
+            "advisory": 0, 
+            "math": 0, 
+            "graph": 0
+        }
+    }    

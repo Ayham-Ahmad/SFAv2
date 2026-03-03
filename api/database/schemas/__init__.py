@@ -11,7 +11,7 @@ from .companies import (
 
 from .tents import TentOut, TentCreate, TentUpdate, DatabaseQueryRequest
 
-from .interactions import InteractionOut
+from .interactions import InteractionOut, ChatRequest, InteractionCreate, Performance, get_usage_metrics_dict
 from .modifications import ModificationOut
 
 from .db_configs import (
@@ -26,7 +26,7 @@ __all__ = [
     "CompanyBase", "CompanyCreate", "CompanyUpdate", "CompanyOut", 
     "CompanySettings", "CompanyTentSettings", "PLAN_LIMITS", "CompanySummaryOut",
     "TentOut", "TentCreate", "TentUpdate", "DatabaseQueryRequest",
-    "InteractionOut",
+    "InteractionOut", "ChatRequest", "InteractionCreate", "Performance", "get_usage_metrics_dict",
     "ModificationOut",
     "SQLiteConfig", "PostgresConfig", "MySQLConfig", 
     "CSVConfig", "MongoDBConfig", "DBConfigType"

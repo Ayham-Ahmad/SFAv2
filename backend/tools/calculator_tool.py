@@ -4,11 +4,9 @@ import numpy as np
 import sentry_sdk
 from typing import Dict, Any, List
 
-def calculate_on_multitent_data(sql_results: Dict[str, List[List[Dict[str, Any]]]], formula: str, new_column_name: str = "computed_result") -> Dict[str, Any]:
+def calculate_on_multiTent_data(sql_results: Dict[str, List[List[Dict[str, Any]]]], formula: str, new_column_name: str = "computed_result") -> Dict[str, Any]:
     try:
         updated_results = {}
-        
-        sql_results = sql_results.get("results")
                 
         for db_id, datasets in sql_results.items():
             updated_results[db_id] = []

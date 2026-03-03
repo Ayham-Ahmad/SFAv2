@@ -7,3 +7,4 @@ plan.txt
 docker-compose.yml
 backend/core/RAG/Data/
 backend/core/RAG/VectorDB/
+.vscode

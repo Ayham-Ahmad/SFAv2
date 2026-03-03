@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func, case
 from pydantic import BaseModel
+import sentry_sdk
 from typing import Union, Optional, List, Dict, Any
 
 from ..models import Interaction
@@ -13,10 +14,16 @@ class InteractionCRUD:
     def create(db: Session, interaction_data: Union[dict, BaseModel]) -> Interaction:
         data = to_dict(interaction_data)
         new_interaction = Interaction(**data)
-        db.add(new_interaction)
-        db.commit()
-        db.refresh(new_interaction)
-        return new_interaction
+        try:
+            db.add(new_interaction)
+            db.commit()
+            db.refresh(new_interaction)
+            return new_interaction
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
+            print(f"Error while creating interaction: {str(e)}")
+            db.rollback()
+            return None
 
     @staticmethod
     def get_session_history_by_count(db: Session, session_id: int, count: int) -> List[Interaction]:
@@ -83,19 +90,24 @@ class InteractionCRUD:
         
         record = db.query(Interaction).filter(Interaction.interaction_id == interaction_id).first()
         if record:
-            record.interaction_content = content
-            record.agent_steps = steps
-            record.model_used = model_used
-            record.cost = cost
-            record.status = InteractionStatus.COMPLETED
-            
-            if performance_data:
-                for key, value in performance_data.items():
-                    if hasattr(record, key):
-                        setattr(record, key, value)
-            
-            db.commit()
-            db.refresh(record)
+            try:
+                record.interaction_content = content
+                record.agent_steps = steps
+                record.model_used = model_used
+                record.cost = cost
+                record.status = InteractionStatus.COMPLETED
+                
+                if performance_data:
+                    for key, value in performance_data.items():
+                        if hasattr(record, key):
+                            setattr(record, key, value)
+                
+                db.commit()
+                db.refresh(record)
+            except Exception as e:
+                db.rollback()
+                sentry_sdk.capture_exception(e)
+                return None
         return record
 
     @staticmethod
