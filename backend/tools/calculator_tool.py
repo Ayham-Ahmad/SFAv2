@@ -5,6 +5,9 @@ import sentry_sdk
 from typing import Dict, Any, List
 
 def calculate_on_multiTent_data(sql_results: Dict[str, List[List[Dict[str, Any]]]], formula: str, new_column_name: str = "computed_result") -> Dict[str, Any]:
+    if not isinstance(sql_results, dict):
+        return {"success": False, "error": "Math tool requires a valid results dictionary."}
+    
     try:
         updated_results = {}
                 
@@ -18,16 +21,12 @@ def calculate_on_multiTent_data(sql_results: Dict[str, List[List[Dict[str, Any]]
 
                 df = pd.DataFrame(rows)
                                 
-                # for col in df.columns:
-                #     if df[col].dtype == 'object':
-                #         df[col] = pd.to_numeric(df[col], errors='coerce')
+                for col in df.columns:
+                    if df[col].dtype in ['float64', 'int64']:
+                        df[f"{col}_prev"] = df[col].shift(-1)
 
-                calc_context = {
-                    col: df[col].values 
-                    for col in df.columns 
-                    if df[col].dtype in ['float64', 'int64', 'float32']
-                }
-                                
+                calc_context = {col: df[col].values for col in df.columns if df[col].dtype in ['float64', 'int64']}
+                
                 try:
                     result_array = numexpr.evaluate(formula, local_dict=calc_context)
                     df[new_column_name] = result_array

@@ -1,66 +1,68 @@
-import asyncio
 import time
 import tracemalloc
 from fastapi import APIRouter, Depends, Request
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
-import sentry_sdk
 
 from api.deps import get_db, get_current_active_user
-from api.config import settings
 from api.constants import PLAN_LIMITS
 from api.database.models import User
-from api.database.schemas import ChatRequest, InteractionCreate, Performance, get_usage_metrics_dict
+from api.database.schemas import ChatRequest, InteractionCreate, Performance
 from api.database.events import InteractionCRUD, SessionCRUD, CompanyCRUD
 from backend.utils.responses import create_response
 from backend.agents.SFA import SFA
 from backend.utils.calculating import calculate_interaction_cost
+from backend.core.task import run_task
 
 router = APIRouter(prefix="/api/chat", tags=["Chat"])
+templates = Jinja2Templates(directory="frontend/templates")
 
-async def run_task(agent: SFA, http_request: Request):
-    task = asyncio.create_task(agent.main(http_request))
-
-    try: 
-        result_data, usage_metrics = await asyncio.wait_for(task, timeout=settings.TIMEOUT_SECONDS)
-
-        if isinstance(result_data, str):
-            return result_data, usage_metrics
-
-        if isinstance(result_data, dict):
-            final_answer = result_data.get("action_input", "Analysis complete, but no output provided.")
-            return final_answer, usage_metrics
-        
-        return "Unexpected response format.", usage_metrics
+@router.get("/analytics", response_class=HTMLResponse)
+async def get_chat_page(
+    request: Request,
+    # current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    mock_user = db.query(User).filter(User.user_id == 2).first()
     
-    except asyncio.TimeoutError:
-        task.cancel()
-        return "The analysis took too long. Try asking for a smaller date range.", get_usage_metrics_dict()
-    except Exception as e:
-        sentry_sdk.capture_exception(e)
-        return f"An error occurred during analysis: {str(e)}", get_usage_metrics_dict()
-
+    return templates.TemplateResponse(
+        "analytics.html",
+        {
+            "request": request,
+            "current_user": mock_user,
+            "active_page": "analytics"
+        }
+    )
 
 @router.post("")
 async def chat_endpoint(
     http_request: Request,
     payload: ChatRequest,
-    current_user: User = Depends(get_current_active_user),
+    # current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
+    current_user = db.query(User).filter(User.user_id == 2).first()
     tracemalloc.start()
     start_time = time.time()
     
-    company_plan = CompanyCRUD.get_by_id(db, current_user.company_id).plan
+    company = CompanyCRUD.get_by_id(db, current_user.company_id)
     
-    plan = PLAN_LIMITS.get(company_plan)
+    if not company:
+        print("Error: No company found in chat_endpoint router")
+        
+    plan = PLAN_LIMITS.get(company.plan)
     
     model = plan["allowed_models"][1]
     
     current_session = SessionCRUD.get_active_by_user(db, current_user.user_id)
     
+    if not current_session:
+        print("Error: No current session found in chat_endpoint")
+    
     interaction = InteractionCRUD.create(
         db=db,
-        interaction_data=InteractionCreate(session_id=current_session.session_id)
+        interaction_data=InteractionCreate(session_id=1) # change this to current_session.session_id
     )
 
     agent = SFA(

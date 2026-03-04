@@ -20,7 +20,6 @@ class InteractionCreate(BaseSchema):
     session_id: int
 
 class ChatRequest(BaseSchema):
-    user_id: int
     message: str
     status: InteractionStatus = InteractionStatus.PENDING
     
