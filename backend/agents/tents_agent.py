@@ -35,4 +35,4 @@ async def get_relevant_tents(user_query: str, db: Session, company_id: int, usag
     except Exception as e:
         sentry_sdk.capture_exception(e)
         print(f"Error: {str(e)}")
-        return [valid_ids], usage_metrics
+        return valid_ids, usage_metrics

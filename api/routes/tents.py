@@ -3,11 +3,11 @@ from sqlalchemy.orm import Session
 from typing import List
 import sentry_sdk
 
+from backend.services.tenant_manager import MultiTenantDBManager
 from ..deps import get_db, get_current_active_user, check_admin_access, check_super_admin_access
 from ..database.models import User
 from ..database.schemas import TentCreate, TentOut, TentUpdate, CompanySummaryOut, DatabaseQueryRequest
 from ..database.events import TentCRUD, CompanyCRUD
-from backend.services.tenant_manager import MultiTenantDBManager
 from ..constants import UserRole
 
 router = APIRouter(prefix="/api/tents", tags=["Database Tents"])

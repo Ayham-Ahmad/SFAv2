@@ -1,6 +1,6 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 import sentry_sdk
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from ..data_mining.sqlite_manager import SQLiteManager
 from ..data_mining.csv_manager import CSVManager
@@ -8,6 +8,7 @@ from ..data_mining.mysql_manager import MySQLManager
 from ..data_mining.mongo_manager import MongoManager
 from ..data_mining.postgres_manager import PostgreSQLManager
 
+from api.config import settings
 from api.constants import DatabaseType
 from api.database.models import TentDatabase
 from ..utils.encryption import decrypt_config
@@ -21,8 +22,10 @@ DB_MANAGERS = {
     DatabaseType.POSTGRESQL: PostgreSQLManager
 }
 
+
 class MultiTenantDBManager:
-    _active_managers: Dict[int, Any] = {}
+    # Stores {tent_id: (manager_instance, last_used_datetime)}
+    _active_managers: Dict[int, Tuple[Any, datetime]] = {}
     
     @staticmethod
     def get_supported_types() -> list:
@@ -51,21 +54,30 @@ class MultiTenantDBManager:
         if not tent or not tent.connection_config:
             return None
 
+        # Clean up expired connections on each access
+        MultiTenantDBManager._cleanup_expired()
+
         if tent.db_id in MultiTenantDBManager._active_managers:
-            cached = MultiTenantDBManager._active_managers[tent.db_id]
+            cached_manager, last_used = MultiTenantDBManager._active_managers[tent.db_id]
             
             expected_class = DB_MANAGERS.get(tent.db_type.lower())
-            if isinstance(cached, expected_class) and cached.is_connected:
-                return cached
+            if isinstance(cached_manager, expected_class) and cached_manager.is_connected:
+                # Update last_used timestamp
+                MultiTenantDBManager._active_managers[tent.db_id] = (cached_manager, datetime.now(timezone.utc))
+                return cached_manager
             
             MultiTenantDBManager.disconnect_tent(tent.db_id)
+
+        # Evict least recently used if at capacity
+        if len(MultiTenantDBManager._active_managers) >= settings.MAX_CACHED_CONNECTIONS:
+            MultiTenantDBManager._evict_lru()
 
         try:
             config = decrypt_config(tent.connection_config)
             manager = MultiTenantDBManager._create_instance(tent.db_type, config)
             
             if manager and manager.connect():
-                MultiTenantDBManager._active_managers[tent.db_id] = manager
+                MultiTenantDBManager._active_managers[tent.db_id] = (manager, datetime.now(timezone.utc))
                 return manager
         except Exception as e:
             sentry_sdk.capture_exception(e)
@@ -103,9 +115,35 @@ class MultiTenantDBManager:
             return create_response(False, "Query failed", error=str(e))
 
     @staticmethod
+    def _cleanup_expired():
+        """Remove connections that have been idle longer than the TTL."""
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(minutes=settings.CONNECTION_TTL_MINUTES)
+        
+        expired_ids = [
+            tid for tid, (_, last_used) in MultiTenantDBManager._active_managers.items()
+            if last_used < cutoff
+        ]
+        
+        for tid in expired_ids:
+            MultiTenantDBManager.disconnect_tent(tid)
+
+    @staticmethod
+    def _evict_lru():
+        """Remove the least recently used connection to make room."""
+        if not MultiTenantDBManager._active_managers:
+            return
+        
+        lru_id = min(
+            MultiTenantDBManager._active_managers,
+            key=lambda tid: MultiTenantDBManager._active_managers[tid][1]
+        )
+        MultiTenantDBManager.disconnect_tent(lru_id)
+
+    @staticmethod
     def disconnect_tent(tent_id: int):
         if tent_id in MultiTenantDBManager._active_managers:
-            manager = MultiTenantDBManager._active_managers[tent_id]
+            manager, _ = MultiTenantDBManager._active_managers[tent_id]
             try:
                 manager.disconnect()
             except Exception:

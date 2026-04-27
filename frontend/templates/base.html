@@ -27,7 +27,7 @@
 
             <div id="user-welcome" class="text-center text-secondary mt-3 mb-2 small fw-bold">
                 {% if current_user %}
-                Welcome, {{ current_user.username }}
+                Welcome, {{ current_user.username.replace("_", " ") }}
                 {% endif %}
             </div>
 

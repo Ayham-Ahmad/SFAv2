@@ -24,7 +24,7 @@ async def get_chat_page(
     # current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    mock_user = db.query(User).filter(User.user_id == 2).first()
+    mock_user = db.query(User).filter(User.user_id == 2).first() # change this to get_current_active_user
     
     return templates.TemplateResponse(
         "analytics.html",
@@ -53,7 +53,7 @@ async def chat_endpoint(
         
     plan = PLAN_LIMITS.get(company.plan)
     
-    model = plan["allowed_models"][1]
+    model = plan["allowed_models"][1] # change this to dynamic based on the company's plan
     
     current_session = SessionCRUD.get_active_by_user(db, current_user.user_id)
     
@@ -82,7 +82,7 @@ async def chat_endpoint(
     p_tokens = usage_metrics.get("p_tokens", 0)
     c_tokens = usage_metrics.get("c_tokens", 0)
     total_tokens = usage_metrics.get("total_tokens", 0)
-    api_call_count = usage_metrics.get("api_calls", 0)
+    api_call_count = usage_metrics.get("api_call", 0)
     steps = usage_metrics.get("steps", 0)
     
 

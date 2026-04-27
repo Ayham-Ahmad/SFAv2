@@ -1,17 +1,16 @@
-import json
 import sentry_sdk
 from typing import List, Dict, Any
 
-def select_graph_template(intent: dict, sql_results: Dict[str, Any]) -> str:
+def select_graph_template(intent: dict, sql_results: Dict[str, Any]) -> Dict[str, Any]:
     try:
         if not intent:
-            return json.dumps({"success": False, "error": "Empty input data"})
+            return {"success": False, "error": "Empty input data"}
             
         # 1. Handle SQL results structure
-        results_map = sql_results.get("results", {}) if "results" in sql_results else sql_results
+        results_map = sql_results.get("results", sql_results)
         
         if not results_map:
-            return json.dumps({"success": False, "error": "No SQL results provided for graphing"})
+            return {"success": False, "error": "No SQL results provided for graphing"}
 
         # 2. Determine which DB to use
         db_id = str(intent.get("db_id", ""))
@@ -25,11 +24,11 @@ def select_graph_template(intent: dict, sql_results: Dict[str, Any]) -> str:
         res_index = intent.get("query_result_index", 0)
         
         if not datasets or res_index >= len(datasets):
-            return json.dumps({"success": False, "error": f"Data not found for DB {db_id} index {res_index}"})
+            return {"success": False, "error": f"Data not found for DB {db_id} index {res_index}"}
         
         raw_data = datasets[res_index]
         if not raw_data:
-            return json.dumps({"success": False, "error": "Dataset is empty"})
+            return {"success": False, "error": "Dataset is empty"}
 
         # 4. Column and Axis Logic
         first_row = raw_data[0]
@@ -50,7 +49,7 @@ def select_graph_template(intent: dict, sql_results: Dict[str, Any]) -> str:
             y_col = available_cols[0]
 
         if not x_col or not y_col:
-            return json.dumps({"success": False, "error": "Could not determine X or Y columns"})
+            return {"success": False, "error": "Could not determine X or Y columns"}
 
         # 5. Metadata and Formatting
         title = intent.get("title")
@@ -75,8 +74,8 @@ def select_graph_template(intent: dict, sql_results: Dict[str, Any]) -> str:
             except Exception as sort_err:
                 sentry_sdk.capture_message(f"Sort failed: {str(sort_err)}")
 
-        return json.dumps(graph_config)
+        return graph_config
 
     except Exception as e:
         sentry_sdk.capture_exception(e)
-        return json.dumps({"success": False, "error": f"Internal Error: {str(e)}"})
+        return {"success": False, "error": f"Internal Error: {str(e)}"}

@@ -59,8 +59,8 @@ async def check_super_admin_access(current_user: User = Depends(get_current_user
         )
     return current_user
 
-def check_admin_access(current_user: User = Depends(get_current_active_user)):
-    if current_user.role not in UserRole.ADMIN:
+async def check_admin_access(current_user: User = Depends(get_current_active_user)):
+    if current_user.role != UserRole.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, 
             detail="Administrative privileges required for this action."

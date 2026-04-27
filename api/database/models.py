@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON, Float
 from sqlalchemy.orm import relationship
+
 from .database import Base
 
 class User(Base):
@@ -26,6 +27,7 @@ class User(Base):
     user_company = relationship("Company", back_populates="managers")
     active_sessions = relationship("Session", back_populates="user_session")
     modifications = relationship("Modification", back_populates="actor")
+    generated_graphs = relationship("GeneratedGraphs", back_populates="user")
 
 class Company(Base):
     __tablename__ = "companies"
@@ -116,3 +118,15 @@ class Modification(Base):
     user_id = Column(Integer, ForeignKey("users.user_id"), nullable=True, index=True)
 
     actor = relationship("User", back_populates="modifications")
+    
+class GeneratedGraphs(Base):
+    __tablename__ = "generated_graphs"
+    
+    graph_id = Column(Integer, primary_key=True, index=True)
+    
+    graph_config = Column(JSON, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    user_id = Column(Integer, ForeignKey("users.user_id"), index=True)
+    
+    user = relationship("User", back_populates="generated_graphs")

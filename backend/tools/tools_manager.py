@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from typing import Dict
+import asyncio
 
 from .retrieve_tool import execute_multiTent_queries
 from .calculator_tool import calculate_on_multiTent_data
@@ -21,7 +22,7 @@ class ToolsManager:
         
         sql_payload = tools_input.get("retrieval")
         if isinstance(sql_payload, dict):
-            retrieval_result = execute_multiTent_queries(db, company_id, sql_payload)
+            retrieval_result = await asyncio.to_thread(execute_multiTent_queries, db, company_id, sql_payload)
             usage_metrics["steps"]["retrieval"] += 1
             
             if retrieval_result.get("success"):
@@ -36,7 +37,7 @@ class ToolsManager:
             usage_metrics["steps"]["advisory"] += 1
             if vector_db:
                 rag_tool = AdvisoryRAGTool(vector_db)
-                results["advisory"] = rag_tool.get_institutional_knowledge(advisory_payload)
+                results["advisory"] = await asyncio.to_thread(rag_tool.get_institutional_knowledge, advisory_payload)
             else:
                 results["advisory"] = "Error: Knowledge Base not initialized."
 
@@ -49,7 +50,7 @@ class ToolsManager:
                 columns = calculation[1] if len(calculation) > 1 else []
                 formula = calculation[2] if len(calculation) > 2 else ""
                 
-                calc_res = calculate_on_multiTent_data(results.get("retrieval"), formula)
+                calc_res = await asyncio.to_thread(calculate_on_multiTent_data, results.get("retrieval"), formula)
                 math_results.append(calc_res)
                 
             results["math"] = math_results

@@ -13,6 +13,9 @@ class StaticSettings(BaseSettings):
     DATABASE_URL: str = "sqlite:///./api/database/data/sfa_database.db"
     TIMEOUT_SECONDS: int = 180
     ROW_LIMIT: int = 20
+    MAX_GRAPHS: int = 2
+    CONNECTION_TTL_MINUTES: int = 30
+    MAX_CACHED_CONNECTIONS: int = 100
 
 class EnvSettings(BaseSettings):
     SECRET_KEY: str = Field(default_factory=lambda: os.getenv("SECRET_KEY"))
