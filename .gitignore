@@ -9,3 +9,5 @@ backend/core/RAG/Data/
 backend/core/RAG/VectorDB/
 .vscode
 PrintAllDb.py
+__pycache__/
+*.py[cod]
