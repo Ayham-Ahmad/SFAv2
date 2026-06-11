@@ -15,9 +15,12 @@ def create_response(success: bool, message: str = None, data: Any = None, error:
         error=error
     ).model_dump()
     
-def get_fallback_response():
+def get_fallback_response(answer_text: str = None):
+    if not answer_text:
+        answer_text = "I reached the maximum number of thinking steps without finding a complete answer."
+        
     return {
-            "thought": "Max iterations reached.", 
+            "thought": "Max iterations reached. Providing summary from gathered data.", 
             "action": "Final Answer", 
-            "action_input": "I reached the maximum number of thinking steps without finding a complete answer."
+            "action_input": answer_text
         }

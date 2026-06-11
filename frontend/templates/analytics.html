@@ -91,11 +91,6 @@
                         placeholder="Ask about revenue trends, generate a graph, or request market advice..."
                         autocomplete="off">
 
-                    <button class="btn btn-outline-secondary px-3" onclick="requestGraph()"
-                        title="Force Graph Generation">
-                        <i class="fas fa-chart-pie"></i>
-                    </button>
-
                     <button class="btn btn-danger px-4" id="stop-btn" onclick="stopQuery()" style="display: none;"
                         title="Stop Query">
                         <i class="fas fa-stop me-1"></i> Stop
@@ -174,5 +169,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', path='js/analytics.js') }}?v=11"></script>
+<script src="{{ url_for('static', path='js/analytics.js') }}?v={{ range(1, 9999) | random }}"></script>
 {% endblock %}

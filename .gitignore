@@ -8,3 +8,4 @@ docker-compose.yml
 backend/core/RAG/Data/
 backend/core/RAG/VectorDB/
 .vscode
+PrintAllDb.py

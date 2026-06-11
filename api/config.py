@@ -16,6 +16,7 @@ class StaticSettings(BaseSettings):
     MAX_GRAPHS: int = 2
     CONNECTION_TTL_MINUTES: int = 30
     MAX_CACHED_CONNECTIONS: int = 100
+    MAX_ITERATIONS: int = 10
 
 class EnvSettings(BaseSettings):
     SECRET_KEY: str = Field(default_factory=lambda: os.getenv("SECRET_KEY"))

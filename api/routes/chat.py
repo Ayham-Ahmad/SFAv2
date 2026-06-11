@@ -11,7 +11,7 @@ from api.database.models import User
 from api.database.schemas import ChatRequest, InteractionCreate, Performance
 from api.database.events import InteractionCRUD, SessionCRUD, CompanyCRUD
 from backend.utils.responses import create_response
-from backend.agents.SFA import SFA
+from backend.agents.SFA import SFA, ACTIVE_AGENTS
 from backend.utils.calculating import calculate_interaction_cost
 from backend.core.task import run_task
 
@@ -42,7 +42,7 @@ async def chat_endpoint(
     # current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    current_user = db.query(User).filter(User.user_id == 2).first()
+    current_user = db.query(User).filter(User.user_id == 2).first() # remove later when make login
     tracemalloc.start()
     start_time = time.time()
     
@@ -68,10 +68,11 @@ async def chat_endpoint(
     agent = SFA(
         user_query=payload.message, 
         db=db, 
-        company_id=current_user.company_id
+        company_id=current_user.company_id,
+        user_id=current_user.user_id
     )
 
-    answer_text, usage_metrics = await run_task(agent, http_request)
+    answer_text, usage_metrics, graph_data = await run_task(agent, http_request)
 
     response_time = time.time() - start_time
     
@@ -108,4 +109,10 @@ async def chat_endpoint(
     return create_response(
         success=True if "An error occurred" not in answer_text else False, 
         message=answer_text,
+        data={"graphs": graph_data} if graph_data else None
     )
+
+@router.post("/stop")
+async def stop_chat(current_user: User = Depends(get_current_active_user)):
+    ACTIVE_AGENTS[current_user.user_id] = True
+    return {"success": True, "message": "Stop signal sent to agent."}

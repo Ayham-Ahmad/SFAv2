@@ -1,3 +1,59 @@
-.bot-msg { background-color: #f8f9fa; border-left: 4px solid #0ea5e9; padding: 10px 15px; border-radius: 4px; margin-bottom: 10px; }
-.user-msg { background-color: #e0f2fe; text-align: right; padding: 10px 15px; border-radius: 4px; margin-bottom: 10px; border-right: 4px solid #0284c7; }
-.metric-badge { font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; background: #e2e8f0; color: #475569; margin-right: 5px; }
+/* Dashboard Graph Grid */
+#graphs-track {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+    gap: 20px;
+}
+
+.graph-card-container {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.graph-card-container:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+}
+
+/* Premium Chat Bubbles */
+.chat-box {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f8f9fa;
+}
+
+.message {
+    max-width: 85%;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.bot-msg {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-left: 5px solid #0ea5e9;
+    align-self: flex-start;
+}
+
+.user-msg {
+    background-color: #0ea5e9;
+    color: white;
+    border-right: 5px solid #0284c7;
+    align-self: flex-end;
+    margin-left: auto;
+}
+
+.bot-msg i, .user-msg i {
+    opacity: 0.8;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.message, .graph-card-container {
+    animation: fadeIn 0.3s ease-out forwards;
+}

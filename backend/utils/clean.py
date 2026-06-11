@@ -19,14 +19,17 @@ def extract_react_components(raw_llm_text: str) -> Dict[str, Any]:
         }
 
     action_match = re.search(r"Action:\s*(.*?)(?=\nAction Input:|$)", raw_llm_text, re.DOTALL)
-    action_input_match = re.search(r"Action Input:\s*(.*?)(?=\nObservation:|\nThought:|\nFinal Answer:|$)", raw_llm_text, re.DOTALL)
+    action_input_match = re.search(r"Action Input:\s*(.*?)(?=\nAction:|\nObservation:|\nThought:|\nFinal Answer:|$)", raw_llm_text, re.DOTALL)
 
     action = action_match.group(1).strip() if action_match else None
     action_input_raw = action_input_match.group(1).strip() if action_input_match else ""
     
     action_input = None
     if action_input_raw:
-        clean_json_str = re.sub(r"^```(?:json)?|```$", "", action_input_raw, flags=re.MULTILINE).strip()
+        json_pattern = r"```(?:json)?\s*(.*?)\s*```"
+        match = re.search(json_pattern, action_input_raw, re.DOTALL)
+        clean_json_str = match.group(1).strip() if match else action_input_raw.strip()
+        
         try:
             action_input = json.loads(clean_json_str)
         except json.JSONDecodeError:

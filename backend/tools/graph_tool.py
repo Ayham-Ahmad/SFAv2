@@ -1,6 +1,35 @@
 import sentry_sdk
 from typing import List, Dict, Any
 
+from .base_tool import BaseTool
+
+
+class GraphTool(BaseTool):
+    """
+    Generates chart/graph configurations from retrieved SQL data.
+    
+    Input format from LLM:
+        {"title": "Revenue", "type": "bar", "axis_titles": {...}, "query_result_index": 0}
+    """
+    name = "graph"
+    description = "Generates a chart from retrieved data. Input: a JSON object with \"title\", \"type\" (line/bar/pie/etc.), \"axis_titles\" (with x/y titles and optional type), \"order\" (asc/desc for sorting), and \"query_result_index\" (0-based index of the retrieval result to plot). Output: a visual graph for the user. IMPORTANT: You may only generate ONE graph per response. Do NOT output arrays or multiple graph objects. If the user asks for multiple charts, just generate the most important one."
+    input_type = dict
+    requires_retrieval = True
+    usage_guide = "When using this tool, the system will automatically save the generated graph to the user's dashboard. You should simply inform the user that their chart has been generated and is available to view."
+    input_format = '{"title": "Quarterly Revenue", "type": "line", "axis_titles": {"x": {"title": "Date", "type": "date"}, "y": {"title": "Revenue (USD)", "type": "currency"}}, "order": "asc", "query_result_index": 0}'
+
+    def execute(self, input_data: Any, context: Dict[str, Any]) -> Dict[str, Any]:
+        retrieval_results = context.get("retrieval_results")
+
+        if not retrieval_results or "error" in str(retrieval_results):
+            return {"success": False, "error": "Graph tool requires active retrieval data. Please call 'retrieval' in the same action."}
+
+        graph_result = select_graph_template(input_data, retrieval_results)
+        if graph_result.get("success"):
+            return {"success": True, "data": graph_result}
+        return graph_result
+
+
 def select_graph_template(intent: dict, sql_results: Dict[str, Any]) -> Dict[str, Any]:
     try:
         if not intent:
@@ -64,7 +93,9 @@ def select_graph_template(intent: dict, sql_results: Dict[str, Any]) -> Dict[str
             "x_format": x_info.get("type", "text"),
             "y_column": y_col,
             "y_format": y_info.get("type", "number"),
-            "data": raw_data 
+            "data": raw_data,
+            "series": intent.get("series"),
+            "axis_titles": intent.get("axis_titles")
         }
 
         # 6. Sorting
