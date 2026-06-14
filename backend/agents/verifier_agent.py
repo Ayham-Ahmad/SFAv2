@@ -1,23 +1,22 @@
 """
-Verifier Agent — Self-Verification / Reflection Phase
+Verifier agent — self-reflection pass before the answer reaches the user.
 
-Purpose: Validates the agent's final answer BEFORE it reaches the user.
-Checks for:
-  1. Number consistency — are cited numbers actually in the scratchpad data?
-  2. Trend direction — does the conclusion match chronological data order?
-  3. Reasonable ranges — are percentages, margins, ratios within sane bounds?
-  4. Source attribution — are conclusions properly labeled by evidence type?
+Checks:
+  1. Number consistency — cited figures exist in the scratchpad
+  2. Trend direction — conclusion matches chronological data order
+  3. Reasonable ranges — margins, percentages, ratios within sane bounds
+  4. Unsupported claims — conclusions not backed by retrieved data
 
-Paper basis: CRAG, Self-RAG, Reflexion
-
-Input: final_answer (str), scratchpad (str), usage_metrics (dict)
-Output: verified_answer (str), usage_metrics (dict)
+Verification is always non-blocking: if the model or parse fails, the
+original answer is returned unchanged.
 """
 
 import re
+import json
 import sentry_sdk
 from typing import Dict, Any, Tuple
 
+from api.config import settings
 from api.constants import AIModel
 from ..core.llm_client import call_llm
 from ..services.prompts import VerifierAgentPrompt
@@ -28,44 +27,46 @@ async def verify_answer(
     scratchpad: str,
     usage_metrics: Dict[str, Any]
 ) -> Tuple[str, Dict[str, Any]]:
-    """
-    Verifies the final answer against the scratchpad data.
-    Returns the original or corrected answer.
-    """
+
+    scratchpad_tail = scratchpad[-settings.VERIFIER_SCRATCHPAD_CHARS:]
+
     try:
-        prompt = VerifierAgentPrompt.prompt(final_answer, scratchpad[-3000:])
+        prompt = VerifierAgentPrompt.prompt(final_answer, scratchpad_tail)
 
         response, usage_metrics = await call_llm(
             prompt=prompt,
-            model=AIModel.LLAMA_31_8B,  # Use smaller model for verification (cost-efficient)
+            model=AIModel.LLAMA_31_8B,
             max_tokens=800,
             usage_metrics=usage_metrics
         )
 
-        # Parse the verification result
         match = re.search(r"\{.*\}", response, re.DOTALL)
-        if match:
-            import json
+        if not match:
+            print("Verifier agent: could not find JSON in response — passing original answer.")
+            return final_answer, usage_metrics
+
+        try:
             result = json.loads(match.group(0))
+        except json.JSONDecodeError as e:
+            print(f"Verifier agent: JSON parse failed ({e}) — passing original answer.")
+            return final_answer, usage_metrics
 
-            if result.get("verified") is False and result.get("corrected_answer"):
-                print(f"\n--- [VERIFIER STAGE: INTERVENED] ---")
-                print(f"Issues detected: {result.get('issues', [])}")
-                print(f"Answer has been auto-corrected before reaching user.\n--------------------------------------\n")
-                return result["corrected_answer"], usage_metrics
-            elif result.get("verified") is False:
-                print(f"\n--- [VERIFIER STAGE: FLAG ONLY] ---")
-                print(f"Issues detected: {result.get('issues', [])}")
-                print(f"No correction provided by model. Passing original answer.\n--------------------------------------\n")
-            else:
-                print("\n--- [VERIFIER STAGE: PASSED] ---")
-                print("No contradictions or hallucinations detected.\n--------------------------------------\n")
+        if result.get("verified") is False and result.get("corrected_answer"):
+            print("\n--- [VERIFIER: INTERVENED] ---")
+            print(f"Issues: {result.get('issues', [])}")
+            print("Answer auto-corrected before reaching user.\n")
+            return result["corrected_answer"], usage_metrics
 
-        # If verified or couldn't parse, return original
+        if result.get("verified") is False:
+            print("\n--- [VERIFIER: FLAGGED, NO CORRECTION] ---")
+            print(f"Issues: {result.get('issues', [])}")
+            print("No corrected_answer provided — passing original.\n")
+        else:
+            print("\n--- [VERIFIER: PASSED] ---")
+
         return final_answer, usage_metrics
 
     except Exception as e:
         sentry_sdk.capture_exception(e)
-        print(f"Verifier error (non-blocking): {str(e)}")
-        # Verification is non-blocking — if it fails, return the original answer
+        print(f"Verifier agent error (non-blocking): {e}")
         return final_answer, usage_metrics

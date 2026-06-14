@@ -24,9 +24,7 @@ class UserCRUD:
         if data.get("company_id"):
             company = CompanyCRUD.get_by_id(db, data["company_id"])
             if company:
-                limit = PLAN_LIMITS.get(company.plan, PLAN_LIMITS[CompanyPlan.FREE])[
-                    "managers"
-                ]
+                limit = PLAN_LIMITS.get(company.plan, PLAN_LIMITS[CompanyPlan.FREE])["managers"]
                 if company.managers_count >= limit:
                     raise ValueError(
                         f"Manager limit reached for {company.plan} plan ({limit})."
@@ -42,12 +40,8 @@ class UserCRUD:
                 company_old_snapshot = get_current_snapshot(company)
                 company.managers_count += 1
                 record_modification(
-                    db,
-                    TableName.COMPANIES,
-                    company.company_id,
-                    ActionType.UPDATE,
-                    actor_id,
-                    company_old_snapshot,
+                    db, TableName.COMPANIES, company.company_id,
+                    ActionType.UPDATE, actor_id, company_old_snapshot,
                 )
 
         record_modification(
@@ -67,27 +61,37 @@ class UserCRUD:
         return db.query(User).filter(User.username == username).first()
 
     @staticmethod
+    def get_by_email(db: Session, email: str) -> Optional[User]:
+        return db.query(User).filter(User.email == email).first()
+
+    @staticmethod
+    def get_by_reset_token(db: Session, token: str) -> Optional[User]:
+        return db.query(User).filter(User.reset_token == token).first()
+
+    @staticmethod
     def get_all(db: Session) -> List[User]:
         return db.query(User).order_by(User.username).all()
 
     @staticmethod
-    def get_all_by_company(db: Session, company_id: int) -> List[User]:
+    def get_all_by_company(db: Session, company_id: int, skip: int = 0, limit: int = 50) -> List[User]:
         return (
             db.query(User)
             .filter(User.company_id == company_id)
             .order_by(User.user_created_at.desc())
+            .offset(skip)
+            .limit(limit)
             .all()
         )
 
     @staticmethod
-    def get_admins(db: Session):
+    def get_admins(db: Session) -> List[User]:
         return (
             db.query(User)
             .filter(User.role == UserRole.ADMIN)
             .order_by(User.user_id)
             .all()
         )
-    
+
     @staticmethod
     def get_admin_by_company_id(db: Session, company_id: int) -> User:
         return db.query(User).filter(User.company_id == company_id).first()
@@ -107,36 +111,36 @@ class UserCRUD:
         return user
 
     @staticmethod
+    def clear_reset_token(db: Session, user: User):
+        user.reset_token         = None
+        user.reset_token_expires = None
+        db.commit()
+
+    @staticmethod
     def is_reset_token_valid(user: User, token: str) -> bool:
         if user.reset_token != token:
             return False
-        if (
-            not user.reset_token_expires
-            or datetime.now(timezone.utc) > user.reset_token_expires
-        ):
+        if not user.reset_token_expires or datetime.now(timezone.utc) > user.reset_token_expires:
             return False
         return True
 
     @staticmethod
-    def update(
-        db: Session, user_id: int, updated_data: Union[dict, BaseModel], actor_id
-    ) -> Optional[User]:
+    def update(db: Session, user_id: int, updated_data: Union[dict, BaseModel], actor_id) -> Optional[User]:
         user_record = UserCRUD.get_by_id(db, user_id)
         if user_record:
             snapshot_before_update = get_current_snapshot(user_record)
             data = to_dict(updated_data, for_update=True)
+            
+            if "password" in data:
+                data["hashed_password"] = get_password_hash(data.pop("password"))
 
             for key, value in data.items():
                 if hasattr(user_record, key):
                     setattr(user_record, key, value)
 
             record_modification(
-                db,
-                TableName.USERS,
-                user_id,
-                ActionType.UPDATE,
-                actor_id,
-                snapshot_before_update,
+                db, TableName.USERS, user_id,
+                ActionType.UPDATE, actor_id, snapshot_before_update,
             )
 
             db.commit()
@@ -157,21 +161,13 @@ class UserCRUD:
                     company_old_snapshot = get_current_snapshot(company)
                     company.managers_count -= 1
                     record_modification(
-                        db,
-                        TableName.COMPANIES,
-                        company.company_id,
-                        ActionType.UPDATE,
-                        actor_id,
-                        company_old_snapshot,
+                        db, TableName.COMPANIES, company.company_id,
+                        ActionType.UPDATE, actor_id, company_old_snapshot,
                     )
 
             record_modification(
-                db,
-                TableName.USERS,
-                user_id,
-                ActionType.DELETE,
-                actor_id,
-                last_snapshot_before_delete,
+                db, TableName.USERS, user_id,
+                ActionType.DELETE, actor_id, last_snapshot_before_delete,
             )
 
             db.delete(user_record)

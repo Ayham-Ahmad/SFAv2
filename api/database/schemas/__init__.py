@@ -6,7 +6,8 @@ from .users import UserBase, UserCreate, UserOut, UserPreferences, UserUpdate
 from .companies import (
     CompanyBase, CompanyCreate, CompanyUpdate, CompanyOut, 
     CompanySettings, CompanyTentSettings, PLAN_LIMITS,
-    CompanySummaryOut
+    CompanySummaryOut, RegisterRequest, ForgotPasswordRequest,
+    ResetPasswordRequest, ChangePasswordRequest, OnboardRequest
 )
 
 from .tents import TentOut, TentCreate, TentUpdate, DatabaseQueryRequest
@@ -24,7 +25,8 @@ __all__ = [
     "Token", "TokenData",
     "UserBase", "UserCreate", "UserOut", "UserPreferences", "UserUpdate",
     "CompanyBase", "CompanyCreate", "CompanyUpdate", "CompanyOut", 
-    "CompanySettings", "CompanyTentSettings", "PLAN_LIMITS", "CompanySummaryOut",
+    "CompanySettings", "CompanyTentSettings", "PLAN_LIMITS", "CompanySummaryOut", "OnboardRequest",
+    "RegisterRequest", "ForgotPasswordRequest", "ResetPasswordRequest", "ChangePasswordRequest",
     "TentOut", "TentCreate", "TentUpdate", "DatabaseQueryRequest",
     "InteractionOut", "ChatRequest", "InteractionCreate", "Performance", "get_usage_metrics_dict",
     "ModificationOut",

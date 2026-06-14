@@ -9,7 +9,6 @@ from ...utils import to_dict
 class SessionCRUD:
     @staticmethod
     def create(db: Session, user_id: int):
-
         # first we make sure that there is not active session for this user
         db.query(SessionModel).filter(
             SessionModel.user_id == user_id,
@@ -57,3 +56,19 @@ class SessionCRUD:
             "is_active": False,
             "session_ended_at": datetime.now(timezone.utc)
         })
+        
+    @staticmethod
+    def set_stop_signal(db: Session, session_id: int):
+        session_record = db.query(SessionModel).filter(SessionModel.session_id == session_id).first()
+        if session_record:
+            session_record.stop_requested = True
+            db.commit()
+
+    @staticmethod
+    def check_and_clear_stop_signal(db: Session, session_id: int) -> bool:
+        session_record = db.query(SessionModel).filter(SessionModel.session_id == session_id).first()
+        if session_record and session_record.stop_requested:
+            session_record.stop_requested = False
+            db.commit()
+            return True
+        return False

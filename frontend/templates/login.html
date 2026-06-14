@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SFA — Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg-base); }
+    .auth-wrap { width: 100%; max-width: 400px; padding: 24px; }
+    .auth-logo { text-align: center; margin-bottom: 32px; }
+    .auth-logo .logo-mark { width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg,#3B82F6,#8B5CF6); display: inline-flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 12px; }
+    .auth-logo h1 { font-size: 22px; font-weight: 700; background: linear-gradient(90deg,#3B82F6,#8B5CF6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .auth-logo p  { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+    .auth-card { background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; }
+    .auth-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+    .auth-tab { flex: 1; text-align: center; padding: 10px; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all .15s; }
+    .auth-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+    .auth-panel { display: none; }
+    .auth-panel.active { display: block; }
+    .or-divider { display: flex; align-items: center; gap: 12px; margin: 16px 0; color: var(--text-muted); font-size: 12px; }
+    .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .auth-footer { text-align: center; margin-top: 16px; font-size: 12px; color: var(--text-muted); }
+    .auth-footer a { color: var(--blue); }
+    .err-msg { background: rgba(244,63,94,.1); border: 1px solid rgba(244,63,94,.25); color: var(--rose); font-size: 12px; padding: 8px 12px; border-radius: var(--radius-sm); margin-bottom: 14px; display: none; }
+    .err-msg.show { display: block; }
+    .forgot-link { font-size: 12px; color: var(--blue); float: right; margin-top: -2px; }
+  </style>
+</head>
+<body>
+<div class="auth-wrap">
+  <div class="auth-logo">
+    <div class="logo-mark">S</div>
+    <h1>Smart Financial Advisor</h1>
+    <p>Institutional-grade financial intelligence</p>
+  </div>
+
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <div class="auth-tab active" onclick="switchTab('login')">Sign In</div>
+      <div class="auth-tab" onclick="switchTab('register')">Register</div>
+    </div>
+
+    <!-- Login panel -->
+    <div id="panel-login" class="auth-panel active">
+      <div class="err-msg" id="login-err"></div>
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input type="text" id="login-username" class="form-control" placeholder="your_username" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label class="form-label">
+          Password
+          <a href="#" class="forgot-link" onclick="switchTab('forgot')">Forgot?</a>
+        </label>
+        <input type="password" id="login-password" class="form-control" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" id="login-btn" onclick="doLogin()">
+        Sign In <i class="fas fa-arrow-right"></i>
+      </button>
+    </div>
+
+    <!-- Register panel -->
+    <div id="panel-register" class="auth-panel">
+      <div class="err-msg" id="reg-err"></div>
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input type="text" id="reg-username" class="form-control" placeholder="jane_smith">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="reg-email" class="form-control" placeholder="jane@company.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="reg-password" class="form-control" placeholder="••••••••">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Company ID</label>
+        <input type="number" id="reg-company" class="form-control" placeholder="1">
+        <div class="form-hint">Ask your administrator for your Company ID.</div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="doRegister()">
+        Create Account <i class="fas fa-user-plus"></i>
+      </button>
+    </div>
+
+    <!-- Forgot password panel -->
+    <div id="panel-forgot" class="auth-panel">
+      <div class="err-msg" id="forgot-err"></div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Enter your email and we'll send a reset link.</p>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="forgot-email" class="form-control" placeholder="jane@company.com">
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="doForgot()">
+        Send Reset Link <i class="fas fa-paper-plane"></i>
+      </button>
+      <div class="auth-footer"><a href="#" onclick="switchTab('login')">← Back to sign in</a></div>
+    </div>
+
+    <!-- Reset password panel -->
+    <div id="panel-reset" class="auth-panel">
+      <div class="err-msg" id="reset-err"></div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Enter your new password.</p>
+      <div class="form-group">
+        <label class="form-label">New Password</label>
+        <input type="password" id="reset-password" class="form-control" placeholder="••••••••">
+      </div>
+      <input type="hidden" id="reset-token">
+      <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px" onclick="doReset()">
+        Reset Password <i class="fas fa-key"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/api.js"></script>
+<script src="/static/js/auth.js"></script>
+<script>
+/* Redirect if already logged in */
+if (Auth.getToken()) redirectByRole(Auth.getUser());
+
+/* Check for reset token in URL */
+const urlParams = new URLSearchParams(window.location.search);
+const resetToken = urlParams.get('token');
+if (resetToken) {
+  document.getElementById('reset-token').value = resetToken;
+  switchTab('reset');
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.auth-tab').forEach((t,i) => {
+    const names = ['login','register','forgot','reset'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.auth-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name)?.classList.add('active');
+}
+
+function showErr(id, msg) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = msg; el.classList.add('show'); }
+}
+function hideErr(id) { document.getElementById(id)?.classList.remove('show'); }
+
+async function doLogin() {
+  hideErr('login-err');
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  if (!username || !password) { showErr('login-err','Please fill in all fields.'); return; }
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner" style="display:inline-block"></span> Signing in…';
+  try {
+    const user = await Auth.login(username, password);
+    redirectByRole(user);
+  } catch (e) {
+    showErr('login-err', e.message);
+    btn.disabled = false; btn.innerHTML = 'Sign In <i class="fas fa-arrow-right"></i>';
+  }
+}
+
+async function doRegister() {
+  hideErr('reg-err');
+  const body = {
+    username:   document.getElementById('reg-username').value.trim(),
+    email:      document.getElementById('reg-email').value.trim(),
+    password:   document.getElementById('reg-password').value,
+    company_id: parseInt(document.getElementById('reg-company').value),
+  };
+  if (!body.username || !body.email || !body.password || !body.company_id) {
+    showErr('reg-err','Please fill in all fields.'); return;
+  }
+  const res = await API.post('/api/auth/register', body);
+  if (res?.ok) { Toast?.success('Account created — please sign in.'); switchTab('login'); }
+  else showErr('reg-err', res?.data?.detail || 'Registration failed.');
+}
+
+async function doForgot() {
+  hideErr('forgot-err');
+  const email = document.getElementById('forgot-email').value.trim();
+  if (!email) { showErr('forgot-err','Please enter your email.'); return; }
+  const res = await API.post('/api/auth/forgot-password', { email });
+  if (res?.ok) {
+    document.getElementById('panel-forgot').innerHTML = `<p style="text-align:center;color:var(--emerald);padding:20px 0"><i class="fas fa-check-circle" style="font-size:28px;display:block;margin-bottom:10px"></i>Reset link sent — check your inbox.</p>`;
+  } else showErr('forgot-err', res?.data?.detail || 'Something went wrong.');
+}
+
+async function doReset() {
+  hideErr('reset-err');
+  const token       = document.getElementById('reset-token').value;
+  const new_password = document.getElementById('reset-password').value;
+  if (!new_password) { showErr('reset-err','Please enter a new password.'); return; }
+  const res = await API.post('/api/auth/reset-password', { token, new_password });
+  if (res?.ok) { Toast?.success('Password reset — please sign in.'); switchTab('login'); }
+  else showErr('reset-err', res?.data?.detail || 'Invalid or expired token.');
+}
+
+function redirectByRole(user) {
+  if (!user) return;
+  if (user.role === 'superadmin') window.location.href = '/super-admin/dashboard';
+  else if (user.role === 'admin')  window.location.href = '/admin/settings';
+  else window.location.href = '/analytics';
+}
+
+/* Enter key on login */
+document.addEventListener('DOMContentLoaded', () => {
+  ['login-username','login-password'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
+  });
+});
+</script>
+</body>
+</html>

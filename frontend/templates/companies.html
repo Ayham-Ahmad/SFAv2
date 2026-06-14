@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Companies{% endblock %}
+{% block page_title %}Companies{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-primary btn-sm" onclick="Modal.open('modal-onboard')">
+  <i class="fas fa-plus"></i> Onboard Company
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between" style="margin-bottom:16px">
+  <div class="search-wrap" style="width:280px">
+    <i class="fas fa-search"></i>
+    <input class="form-control" id="search-companies" placeholder="Search companies…">
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table id="tbl-companies">
+    <thead>
+      <tr><th>Company</th><th>Plan</th><th>Admin</th><th>Data Sources</th><th>Tables</th><th>Storage</th><th>Created</th><th></th></tr>
+    </thead>
+    <tbody id="tbody-companies">
+      <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-muted)"><div class="spinner" style="margin:auto"></div></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Onboard modal -->
+<div class="modal-overlay" id="modal-onboard">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Onboard New Company</span>
+      <button class="modal-close">×</button>
+    </div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">Company Name</label>
+        <input class="form-control" id="ob-name" placeholder="Acme Corp">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Plan</label>
+        <select class="form-control" id="ob-plan">
+          <option value="free">Free</option>
+          <option value="pro">Pro</option>
+          <option value="ultra">Ultra</option>
+        </select>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="section-label">Admin Account</div>
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <input class="form-control" id="ob-admin-user" placeholder="admin_acme">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input class="form-control" type="email" id="ob-admin-email" placeholder="admin@acme.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input class="form-control" type="password" id="ob-admin-pass" placeholder="••••••••">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="Modal.close('modal-onboard')">Cancel</button>
+      <button class="btn btn-primary" onclick="onboard()">Create Company</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete confirm -->
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-header"><span class="modal-title" style="color:var(--rose)"><i class="fas fa-trash" style="margin-right:8px"></i>Delete Company</span><button class="modal-close">×</button></div>
+    <p style="font-size:13px;color:var(--text-secondary)">This will permanently remove the company, all users, and all data connections. This cannot be undone.</p>
+    <p style="margin-top:10px;font-size:13px"><strong id="delete-company-name"></strong></p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="Modal.close('modal-delete')">Cancel</button>
+      <button class="btn btn-danger" id="confirm-delete-btn">Delete permanently</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let deleteTarget = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!Auth.requireAuth() || !Auth.requireRole('superadmin')) return;
+  Table.searchFilter('search-companies','tbl-companies');
+  await loadCompanies();
+  document.getElementById('confirm-delete-btn').addEventListener('click', doDelete);
+});
+
+async function loadCompanies() {
+  const res = await API.get('/api/super-admin/companies');
+  const rows = res?.data || [];
+  const tbody = document.getElementById('tbody-companies');
+  tbody.innerHTML = rows.map(c => `
+    <tr>
+      <td><strong>${c.company_name}</strong></td>
+      <td><span class="badge ${c.plan==='ultra'?'badge-violet':c.plan==='pro'?'badge-blue':'badge-muted'}">${c.plan}</span></td>
+      <td class="td-mono">${c.managers_count} managers</td>
+      <td>${c.databases_count}</td>
+      <td>${c.total_tables_count||'—'}</td>
+      <td class="td-mono">${c.total_storage_mb?.toFixed(1)||0} MB</td>
+      <td class="td-mono">${new Date(c.company_created_at).toLocaleDateString()}</td>
+      <td>
+        <button class="btn btn-danger btn-sm" onclick="promptDelete(${c.company_id},'${c.company_name}')">
+          <i class="fas fa-trash"></i>
+        </button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:40px">No companies yet</td></tr>';
+}
+
+async function onboard() {
+  const body = {
+    company_name:   document.getElementById('ob-name').value.trim(),
+    plan:           document.getElementById('ob-plan').value,
+    admin_username: document.getElementById('ob-admin-user').value.trim(),
+    admin_email:    document.getElementById('ob-admin-email').value.trim(),
+    admin_password: document.getElementById('ob-admin-pass').value,
+  };
+  if (!body.company_name||!body.admin_username||!body.admin_email||!body.admin_password) {
+    Toast.error('All fields are required.'); return;
+  }
+  const res = await API.post('/api/super-admin/companies', body);
+  if (res?.ok) { Modal.close('modal-onboard'); Toast.success('Company onboarded.'); loadCompanies(); }
+  else Toast.error(res?.data?.detail || 'Failed to onboard company.');
+}
+
+function promptDelete(id, name) {
+  deleteTarget = id;
+  document.getElementById('delete-company-name').textContent = name;
+  Modal.open('modal-delete');
+}
+
+async function doDelete() {
+  if (!deleteTarget) return;
+  const res = await API.delete(`/api/super-admin/companies/${deleteTarget}`);
+  Modal.close('modal-delete');
+  if (res?.ok) { Toast.success('Company removed.'); loadCompanies(); }
+  else Toast.error(res?.data?.detail || 'Delete failed.');
+}
+</script>
+{% endblock %}

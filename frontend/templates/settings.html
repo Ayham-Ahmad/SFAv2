@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Company Settings{% endblock %}
+{% block page_title %}Company Settings{% endblock %}
+
+{% block content %}
+<div style="max-width:760px">
+
+  <!-- Company info card -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-header">
+      <div><div class="card-title">Company Profile</div><div class="card-sub">Your organisation's plan and limits.</div></div>
+    </div>
+    <div class="stat-grid" id="company-stats">
+      <div class="stat-card"><div class="stat-label">Plan</div><div class="stat-value" id="cs-plan" style="font-size:18px">—</div></div>
+      <div class="stat-card"><div class="stat-label">Data Sources</div><div class="stat-value" id="cs-dbs">—</div></div>
+      <div class="stat-card"><div class="stat-label">Team Size</div><div class="stat-value" id="cs-users">—</div></div>
+      <div class="stat-card"><div class="stat-label">Storage Used</div><div class="stat-value text-mono" id="cs-storage">—</div></div>
+    </div>
+  </div>
+
+  <!-- Graph config -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-header"><div class="card-title">Default Chart Settings</div><div class="card-sub">Controls how the AI generates charts.</div></div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">Default Chart Type</label>
+        <select class="form-control" id="cfg-graph-type">
+          <option value="bar">Bar</option><option value="line">Line</option>
+          <option value="pie">Pie</option><option value="area">Area</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Chart Title</label>
+        <input class="form-control" id="cfg-graph-title" placeholder="Performance Overview">
+      </div>
+      <div class="form-group">
+        <label class="form-label">X-Axis Column</label>
+        <input class="form-control" id="cfg-x-col" placeholder="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Y-Axis Column</label>
+        <input class="form-control" id="cfg-y-col" placeholder="revenue">
+      </div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="saveSettings()">Save Chart Settings</button>
+  </div>
+
+  <!-- Metrics config -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="card-header"><div class="card-title">Dashboard Metrics</div><div class="card-sub">Configure the primary KPI shown on the manager dashboard.</div></div>
+    <div class="grid-2">
+      <div class="form-group">
+        <label class="form-label">Metric Column</label>
+        <input class="form-control" id="cfg-metric-col" placeholder="net_income">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Format</label>
+        <select class="form-control" id="cfg-metric-fmt">
+          <option value="currency">Currency ($)</option>
+          <option value="percent">Percentage (%)</option>
+          <option value="number">Number</option>
+          <option value="text">Text</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="saveSettings()">Save Metric Settings</button>
+  </div>
+
+  <!-- Theme -->
+  <div class="card">
+    <div class="card-header"><div class="card-title">Appearance</div></div>
+    <div class="form-group">
+      <label class="form-label">Theme</label>
+      <select class="form-control" id="cfg-theme" style="width:200px">
+        <option value="dark">Dark</option>
+        <option value="white">Light</option>
+        <option value="auto">System Default</option>
+      </select>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="saveSettings()">Save Appearance</button>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let companyData = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!Auth.requireAuth() || !Auth.requireRole('admin','superadmin')) return;
+  const res = await API.get('/api/admin/company');
+  if (!res?.ok) { Toast.error('Failed to load company data.'); return; }
+  companyData = res.data;
+  const limits = companyData.settings?.tent_config || {};
+  document.getElementById('cs-plan').textContent    = companyData.plan?.toUpperCase() || '—';
+  document.getElementById('cs-dbs').textContent     = `${companyData.databases_count} / ${limits.total_allowed||'∞'}`;
+  document.getElementById('cs-users').textContent   = `${companyData.managers_count}`;
+  document.getElementById('cs-storage').textContent = `${(companyData.total_storage_mb||0).toFixed(1)} MB`;
+
+  const s = companyData.settings || {};
+  if (s.graph_config) {
+    document.getElementById('cfg-graph-type').value  = s.graph_config.graph_type || 'bar';
+    document.getElementById('cfg-graph-title').value = s.graph_config.title || '';
+    document.getElementById('cfg-x-col').value       = s.graph_config.x_column || '';
+    document.getElementById('cfg-y-col').value       = s.graph_config.y_column || '';
+  }
+  if (s.metrics_config) {
+    document.getElementById('cfg-metric-col').value = s.metrics_config.metric_column || '';
+    document.getElementById('cfg-metric-fmt').value = s.metrics_config.metric_format || 'currency';
+  }
+  if (s.theme_config) document.getElementById('cfg-theme').value = s.theme_config || 'dark';
+});
+
+async function saveSettings() {
+  const settings = {
+    graph_config: {
+      graph_type: document.getElementById('cfg-graph-type').value,
+      title:      document.getElementById('cfg-graph-title').value,
+      x_column:   document.getElementById('cfg-x-col').value,
+      y_column:   document.getElementById('cfg-y-col').value,
+    },
+    metrics_config: {
+      metric_column: document.getElementById('cfg-metric-col').value,
+      metric_format: document.getElementById('cfg-metric-fmt').value,
+    },
+  };
+  const res = await API.patch('/api/admin/company', { settings });
+  if (res?.ok) Toast.success('Settings saved.');
+  else Toast.error(res?.data?.detail || 'Save failed.');
+}
+</script>
+{% endblock %}

@@ -51,18 +51,14 @@ class TentDatabase(Base):
 
     db_id = Column(Integer, primary_key=True, index=True)
     modify_key = Column(String, unique=True, index=True, default=lambda: str(uuid.uuid4()))
-    
     db_name = Column(String, index=True) 
     db_type = Column(String)
 
     connection_config = Column(JSON, nullable=True)
-
     cached_schema = Column(JSON, nullable=True, default=list) 
     last_synced = Column(DateTime, nullable=True)
-    
     is_connected = Column(Boolean, default=False)
     last_ping = Column(DateTime, nullable=True)
-    
     is_active = Column(Boolean, default=True)
     db_created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
@@ -74,13 +70,14 @@ class Session(Base):
 
     session_id = Column(Integer, primary_key=True, index=True)
     is_active = Column(Boolean, default=True)
+    stop_requested = Column(Boolean, default=True)
     session_created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     session_ended_at = Column(DateTime, nullable=True)
 
     user_id = Column(Integer, ForeignKey("users.user_id"))
-
     user_session = relationship("User", back_populates="active_sessions")
     interactions = relationship("Interaction", back_populates="session")
+    graphs = relationship("GeneratedGraphs", back_populates="session")
 
 class Interaction(Base):
     __tablename__ = "interactions"
@@ -116,17 +113,17 @@ class Modification(Base):
     modified_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user_id = Column(Integer, ForeignKey("users.user_id"), nullable=True, index=True)
-
     actor = relationship("User", back_populates="modifications")
     
 class GeneratedGraphs(Base):
     __tablename__ = "generated_graphs"
     
     graph_id = Column(Integer, primary_key=True, index=True)
-    
     graph_config = Column(JSON, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
-    user_id = Column(Integer, ForeignKey("users.user_id"), index=True)
-    
-    user = relationship("User", back_populates="generated_graphs")
+    user_id    = Column(Integer, ForeignKey("users.user_id"),        index=True)
+    session_id = Column(Integer, ForeignKey("sessions.session_id"),  index=True, nullable=True)
+
+    user    = relationship("User",    back_populates="generated_graphs")
+    session = relationship("Session", back_populates="graphs")

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, EmailStr
 from datetime import datetime
 from typing import Optional, List, Any, Dict
 
@@ -58,6 +58,13 @@ class CompanyBase(BaseSchema):
 class CompanyCreate(BaseSchema):
     company_name: str
     plan: CompanyPlan = CompanyPlan.FREE
+    
+class OnboardRequest(BaseModel):
+    company_name:   str
+    plan:           str = "free"
+    admin_username: str
+    admin_email:    EmailStr
+    admin_password: str
 
 class CompanyUpdate(BaseSchema):
     company_name: Optional[str] = None
@@ -123,4 +130,21 @@ MODEL_PRICING: Dict[AIModel, ModelCostConfig] = {
         output_cost_per_1m=0.00,
         context_window=8192
     )
-}      
+}
+
+class RegisterRequest(BaseModel):
+    username:   str
+    email:      EmailStr
+    password:   str
+    company_id: int
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+    
+class ResetPasswordRequest(BaseModel):
+    token:        str
+    new_password: str
+    
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password:     str

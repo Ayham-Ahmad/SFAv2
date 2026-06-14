@@ -1,5 +1,6 @@
-from typing import Dict, Any, Optional, Tuple
 import sentry_sdk
+import asyncio
+from typing import Dict, Any, Optional, Tuple
 from datetime import datetime, timezone, timedelta
 
 from ..data_mining.sqlite_manager import SQLiteManager
@@ -24,9 +25,16 @@ DB_MANAGERS = {
 
 
 class MultiTenantDBManager:
-    # Stores {tent_id: (manager_instance, last_used_datetime)}
+    ### {tent_id: (manager_instance, last_used_datetime)}
     _active_managers: Dict[int, Tuple[Any, datetime]] = {}
-    
+    _lock: Optional[asyncio.Lock] = None
+
+    @classmethod
+    def _get_lock(cls) -> asyncio.Lock:
+        if cls._lock is None:
+            cls._lock = asyncio.Lock()
+        return cls._lock
+
     @staticmethod
     def get_supported_types() -> list:
         return [t.value for t in DB_MANAGERS.keys()]
@@ -34,124 +42,121 @@ class MultiTenantDBManager:
     @staticmethod
     def _create_instance(db_type: str, config: Dict[str, Any]) -> Optional[Any]:
         manager_class = DB_MANAGERS.get(db_type.lower())
-        if not manager_class:
-            return None
-        return manager_class(config)
+        return manager_class(config) if manager_class else None
 
     @staticmethod
     def test_connection_with_config(db_type: str, config: Dict[str, Any]) -> Dict[str, Any]:
         manager = MultiTenantDBManager._create_instance(db_type, config)
         if not manager:
-             return create_response(False, f"Unsupported DB Type: {db_type}")
-        
+            return create_response(False, f"Unsupported DB Type: {db_type}")
         try:
             return manager.test_connection()
         finally:
             manager.disconnect()
 
     @staticmethod
-    def get_manager_for_tent(tent: TentDatabase) -> Optional[Any]:
+    async def get_manager_for_tent(tent: TentDatabase) -> Optional[Any]:
         if not tent or not tent.connection_config:
             return None
 
-        # Clean up expired connections on each access
-        MultiTenantDBManager._cleanup_expired()
+        lock = MultiTenantDBManager._get_lock()
+        async with lock:
+            MultiTenantDBManager._cleanup_expired_unsafe()
 
-        if tent.db_id in MultiTenantDBManager._active_managers:
-            cached_manager, last_used = MultiTenantDBManager._active_managers[tent.db_id]
-            
-            expected_class = DB_MANAGERS.get(tent.db_type.lower())
-            if isinstance(cached_manager, expected_class) and cached_manager.is_connected:
-                # Update last_used timestamp
-                MultiTenantDBManager._active_managers[tent.db_id] = (cached_manager, datetime.now(timezone.utc))
-                return cached_manager
-            
-            MultiTenantDBManager.disconnect_tent(tent.db_id)
+            cached = MultiTenantDBManager._active_managers.get(tent.db_id)
+            if cached:
+                cached_manager, _ = cached
+                expected_class = DB_MANAGERS.get(tent.db_type.lower())
+                if isinstance(cached_manager, expected_class) and cached_manager.is_connected:
+                    MultiTenantDBManager._active_managers[tent.db_id] = (
+                        cached_manager, datetime.now(timezone.utc)
+                    )
+                    return cached_manager
+                MultiTenantDBManager._disconnect_unsafe(tent.db_id)
 
-        # Evict least recently used if at capacity
-        if len(MultiTenantDBManager._active_managers) >= settings.MAX_CACHED_CONNECTIONS:
-            MultiTenantDBManager._evict_lru()
+            if len(MultiTenantDBManager._active_managers) >= settings.MAX_CACHED_CONNECTIONS:
+                MultiTenantDBManager._evict_lru_unsafe()
 
-        try:
-            config = decrypt_config(tent.connection_config)
-            manager = MultiTenantDBManager._create_instance(tent.db_type, config)
-            
-            if manager and manager.connect():
-                MultiTenantDBManager._active_managers[tent.db_id] = (manager, datetime.now(timezone.utc))
-                return manager
-        except Exception as e:
-            sentry_sdk.capture_exception(e)
-        
+            try:
+                config = decrypt_config(tent.connection_config)
+                manager = MultiTenantDBManager._create_instance(tent.db_type, config)
+                if manager and manager.connect():
+                    MultiTenantDBManager._active_managers[tent.db_id] = (
+                        manager, datetime.now(timezone.utc)
+                    )
+                    return manager
+            except Exception as e:
+                sentry_sdk.capture_exception(e)
+
         return None
 
     @staticmethod
-    def get_schema_for_tent(tent: TentDatabase) -> Dict[str, Any]:
-        manager = MultiTenantDBManager.get_manager_for_tent(tent)
+    async def get_schema_for_tent(tent: TentDatabase) -> Dict[str, Any]:
+        manager = await MultiTenantDBManager.get_manager_for_tent(tent)
         if not manager:
-            return MultiTenantDBManager._db_connection_failed_message()
-
+            return MultiTenantDBManager._connection_failed()
         try:
-            
             schema = manager.get_full_schema()
-
             if schema and schema.get("success"):
                 tent.last_synced = datetime.now(timezone.utc)
-                tent.last_ping = datetime.now(timezone.utc)
+                tent.last_ping  = datetime.now(timezone.utc)
             return schema
         except Exception as e:
-            print(str(e))
-            MultiTenantDBManager.disconnect_tent(tent.db_id)
+            await MultiTenantDBManager.disconnect_tent(tent.db_id)
             sentry_sdk.capture_exception(e)
             return create_response(False, "Schema retrieval failed.", error=str(e))
 
     @staticmethod
-    def execute_query_for_tent(tent: TentDatabase, query: str) -> Dict[str, Any]:
-        manager = MultiTenantDBManager.get_manager_for_tent(tent)
+    async def execute_query_for_tent(tent: TentDatabase, query: str) -> Dict[str, Any]:
+        manager = await MultiTenantDBManager.get_manager_for_tent(tent)
         if not manager:
-            return MultiTenantDBManager._db_connection_failed_message()
+            return MultiTenantDBManager._connection_failed()
         try:
             return manager.execute_query(query)
         except Exception as e:
+            sentry_sdk.capture_exception(e)
             return create_response(False, "Query failed", error=str(e))
 
     @staticmethod
-    def _cleanup_expired():
-        """Remove connections that have been idle longer than the TTL."""
-        now = datetime.now(timezone.utc)
-        cutoff = now - timedelta(minutes=settings.CONNECTION_TTL_MINUTES)
-        
-        expired_ids = [
-            tid for tid, (_, last_used) in MultiTenantDBManager._active_managers.items()
-            if last_used < cutoff
-        ]
-        
-        for tid in expired_ids:
-            MultiTenantDBManager.disconnect_tent(tid)
+    async def disconnect_tent(tent_id: int):
+        lock = MultiTenantDBManager._get_lock()
+        async with lock:
+            MultiTenantDBManager._disconnect_unsafe(tent_id)
+
+    # ── private helpers — always called while holding the lock ───────────────
 
     @staticmethod
-    def _evict_lru():
-        """Remove the least recently used connection to make room."""
+    def _cleanup_expired_unsafe():
+        now    = datetime.now(timezone.utc)
+        cutoff = now - timedelta(minutes=settings.CONNECTION_TTL_MINUTES)
+        expired = [
+            tid for tid, (_, lu) in MultiTenantDBManager._active_managers.items()
+            if lu < cutoff
+        ]
+        for tid in expired:
+            MultiTenantDBManager._disconnect_unsafe(tid)
+
+    @staticmethod
+    def _evict_lru_unsafe():
         if not MultiTenantDBManager._active_managers:
             return
-        
         lru_id = min(
             MultiTenantDBManager._active_managers,
             key=lambda tid: MultiTenantDBManager._active_managers[tid][1]
         )
-        MultiTenantDBManager.disconnect_tent(lru_id)
+        MultiTenantDBManager._disconnect_unsafe(lru_id)
 
     @staticmethod
-    def disconnect_tent(tent_id: int):
-        if tent_id in MultiTenantDBManager._active_managers:
-            manager, _ = MultiTenantDBManager._active_managers[tent_id]
+    def _disconnect_unsafe(tent_id: int):
+        entry = MultiTenantDBManager._active_managers.pop(tent_id, None)
+        if entry:
             try:
-                manager.disconnect()
+                entry[0].disconnect()
             except Exception:
                 pass
-            del MultiTenantDBManager._active_managers[tent_id]
 
     @staticmethod
-    def _db_connection_failed_message():
+    def _connection_failed() -> Dict[str, Any]:
         return create_response(
             success=False,
             message="Could not connect to database. Check credentials or server status.",
