@@ -70,7 +70,6 @@ mmh3==5.2.0
 mpmath==1.3.0
 multidict==6.7.1
 mypy_extensions==1.1.0
-mysql==0.0.3
 mysql-connector-python==9.6.0
 networkx==3.6.1
 numexpr==2.14.1
