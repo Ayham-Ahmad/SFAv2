@@ -29,7 +29,15 @@ class MongoManager(BaseDataManager):
 
     def connect(self) -> bool:
         if self.client:
-            return True
+            try:
+                self.client.admin.command("ping")
+                self.db = self.client[self.database_name]
+                self.is_connected = True
+                return True
+            except Exception:
+                self.is_connected = False
+                self.disconnect()
+                return False
 
         try:
             if self.uri:
@@ -52,7 +60,7 @@ class MongoManager(BaseDataManager):
             self.is_connected = True
             return True
 
-        except ConnectionFailure as c:
+        except ConnectionFailure:
             self.is_connected = False
             return False
         except Exception:

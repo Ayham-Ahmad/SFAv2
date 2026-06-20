@@ -16,10 +16,10 @@ def load_vector_db():
             embedding_function=embeddings
         )
         
-        print("✅ Vector DB loaded successfully.")
+        print("[OK] Vector DB loaded successfully.")
         return vector_db
         
     except Exception as e:
-        print(f"❌ Error loading Vector DB: {e}")
+        print(f"[ERROR] Error loading Vector DB: {e}")
         sentry_sdk.capture_exception(e)
         return None

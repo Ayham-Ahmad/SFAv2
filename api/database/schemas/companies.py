@@ -75,21 +75,39 @@ class CompanyOut(CompanyBase):
     company_id: int
     databases_count: int
     managers_count: int
+    total_tables_count: int = 0
+    total_storage_mb: float = 0.0
     company_created_at: datetime
 
     @model_validator(mode='before')
     @classmethod
     def apply_plan_limits(cls, data: Any) -> Any:
-        plan = getattr(data, 'plan', None) or data.get('plan')
-        settings = getattr(data, 'settings', None) or data.get('settings')
-        
+        plan = getattr(data, 'plan', None)
+        if plan is None and isinstance(data, dict):
+            plan = data.get('plan')
+
+        settings = getattr(data, 'settings', None)
+        if settings is None and isinstance(data, dict):
+            settings = data.get('settings')
+
         if plan and settings:
             limits = PLAN_LIMITS.get(plan, PLAN_LIMITS[CompanyPlan.FREE])
-            
-            settings.tent_config.total_allowed = limits["dbs"]
-            settings.manager_config.total_allowed = limits["managers"]
-            settings.allowed_models = limits["allowed_models"]
-            
+
+            if isinstance(settings, dict):
+                tent_config = settings.get('tent_config')
+                if isinstance(tent_config, dict):
+                    tent_config['total_allowed'] = limits['dbs']
+
+                manager_config = settings.get('manager_config')
+                if isinstance(manager_config, dict):
+                    manager_config['total_allowed'] = limits['managers']
+
+                settings['allowed_models'] = limits['allowed_models']
+            else:
+                settings.tent_config.total_allowed = limits['dbs']
+                settings.manager_config.total_allowed = limits['managers']
+                settings.allowed_models = limits['allowed_models']
+
         return data
     
 class CompanySummaryOut(BaseModel):

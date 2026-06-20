@@ -38,7 +38,7 @@ class FinancialRAGEmbedder:
 
         except Exception as e:
             sentry_sdk.capture_exception(e)
-            print(f"❌ Error reading {file_path}: {e}")
+            print(f"[ERROR] Error reading {file_path}: {e}")
             return ""
 
     def get_category(self, filename: str) -> str:
@@ -54,7 +54,7 @@ class FinancialRAGEmbedder:
     def run(self):
         documents: List[Document] = []
 
-        print(f"📂 Processing files in: {self.data_path}")
+        print(f"[INFO] Processing files in: {self.data_path}")
 
         if not os.path.exists(self.data_path):
             raise FileNotFoundError(f"Data path not found: {self.data_path}")
@@ -64,7 +64,7 @@ class FinancialRAGEmbedder:
                 file_path = os.path.join(self.data_path, filename)
                 category = self.get_category(filename)
 
-                print(f"📄 Extracting: {filename} [{category}]")
+                print(f"[INFO] Extracting: {filename} [{category}]")
                 raw_text = self.extract_text_from_pdf(file_path)
 
                 if not raw_text:
@@ -85,10 +85,10 @@ class FinancialRAGEmbedder:
                     )
 
         if not documents:
-            print("❌ No documents found to process.")
+            print("[ERROR] No documents found to process.")
             return
 
-        print(f"🚀 Embedding {len(documents)} chunks into ChromaDB...")
+        print(f"[INFO] Embedding {len(documents)} chunks into ChromaDB...")
 
         vector_db = Chroma.from_documents(
             documents=documents,
@@ -96,7 +96,7 @@ class FinancialRAGEmbedder:
             persist_directory=self.persist_directory
         )
 
-        print("✅ Embedding Complete! Vector DB saved.")
+        print("[OK] Embedding Complete! Vector DB saved.")
 
 
 if __name__ == "__main__":

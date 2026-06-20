@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Data Sources{% endblock %}
+{% block page_title %}Data Sources{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-primary btn-sm" onclick="Modal.open('modal-add-tent')">
+  <i class="fas fa-plus"></i> Connect Database
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="table-wrap">
+  <table id="tbl-tents">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Tables</th>
+        <th>Status</th>
+        <th>Last Synced</th>
+        <th>Added</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="tbody-tents">
+      <tr>
+        <td colspan="7" style="text-align:center;padding:40px;color:var(--text-muted)">
+          <div class="spinner" style="margin:auto"></div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Schema viewer modal -->
+<div class="modal-overlay" id="modal-schema">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header"><span class="modal-title" id="schema-title">Schema</span><button
+        class="modal-close">×</button></div>
+    <div id="schema-content"
+      style="max-height:400px;overflow-y:auto;font-family:var(--font-mono);font-size:12px;color:var(--text-secondary)">
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="Modal.close('modal-schema')">Close</button></div>
+  </div>
+</div>
+
+<!-- Add tent modal -->
+<div class="modal-overlay" id="modal-add-tent">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header"><span class="modal-title">Connect Data Source</span><button class="modal-close">×</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Connection Name</label>
+      <input class="form-control" id="t-name" placeholder="My Database">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Database Type</label>
+      <select class="form-control" id="t-type" onchange="buildConfigForm()">
+        <option value="sqlite">SQLite</option>
+        <option value="postgresql">PostgreSQL</option>
+        <option value="mysql">MySQL</option>
+        <option value="csv">CSV File</option>
+        <option value="mongodb">MongoDB</option>
+      </select>
+    </div>
+    <div id="config-form-area"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="Modal.close('modal-add-tent')">Cancel</button>
+      <button class="btn btn-ghost" onclick="testConnection()"><i class="fas fa-plug"></i> Test</button>
+      <button class="btn btn-primary" onclick="addTent()">Connect</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const CONFIG_FORMS = {
+    sqlite: `<div class="form-group"><label class="form-label">File Path</label><input class="form-control cfg" data-key="PATH" placeholder="/data/db.sqlite3"></div>`,
+    csv: `<div class="form-group"><label class="form-label">File Path</label><input class="form-control cfg" data-key="PATH" placeholder="/data/sales.csv"></div><div class="form-group"><label class="form-label">Delimiter</label><input class="form-control cfg" data-key="DELIMITER" value=","></div>`,
+    postgresql: `<div class="grid-2"><div class="form-group"><label class="form-label">Host</label><input class="form-control cfg" data-key="HOST" placeholder="localhost"></div><div class="form-group"><label class="form-label">Port</label><input class="form-control cfg" data-key="PORT" value="5432"></div></div><div class="grid-2"><div class="form-group"><label class="form-label">User</label><input class="form-control cfg" data-key="USER" placeholder="postgres"></div><div class="form-group"><label class="form-label">Password</label><input class="form-control cfg" type="password" data-key="PASSWORD" placeholder="••••••••"></div></div><div class="form-group"><label class="form-label">Database</label><input class="form-control cfg" data-key="DATABASE" placeholder="mydb"></div>`,
+    mysql: `<div class="grid-2"><div class="form-group"><label class="form-label">Host</label><input class="form-control cfg" data-key="HOST" placeholder="localhost"></div><div class="form-group"><label class="form-label">Port</label><input class="form-control cfg" data-key="PORT" value="3306"></div></div><div class="grid-2"><div class="form-group"><label class="form-label">User</label><input class="form-control cfg" data-key="USER" placeholder="root"></div><div class="form-group"><label class="form-label">Password</label><input class="form-control cfg" type="password" data-key="PASSWORD" placeholder="••••••••"></div></div><div class="form-group"><label class="form-label">Database</label><input class="form-control cfg" data-key="DATABASE" placeholder="mydb"></div>`,
+    mongodb: `<div class="form-group"><label class="form-label">URI (or fill fields below)</label><input class="form-control cfg" data-key="URI" placeholder="mongodb://user:pass@host:27017/db"></div><div class="form-group"><label class="form-label">Database</label><input class="form-control cfg" data-key="DATABASE" placeholder="mydb"></div>`,
+  };
+
+  function buildConfigForm() {
+    document.getElementById('config-form-area').innerHTML = CONFIG_FORMS[document.getElementById('t-type').value] || '';
+  }
+
+  function getConfig() {
+    const cfg = {};
+    document.querySelectorAll('.cfg').forEach(el => { if (el.value) cfg[el.dataset.key] = el.value; });
+    return cfg;
+  }
+
+  async function testConnection() {
+    const body = { db_name: 'test', db_type: document.getElementById('t-type').value, connection_config: getConfig() };
+    const res = await API.post('/api/tents/test', body);
+    if (res?.ok && res.data?.success) Toast.success(res.data.message || 'Connection successful!');
+    else Toast.error(res?.data?.message || 'Connection failed.');
+  }
+
+  async function addTent() {
+    const body = { db_name: document.getElementById('t-name').value.trim(), db_type: document.getElementById('t-type').value, connection_config: getConfig() };
+    if (!body.db_name) { Toast.error('Please enter a name.'); return; }
+    const res = await API.post('/api/tents/', body);
+    if (res?.ok) { Modal.close('modal-add-tent'); Toast.success('Database connected.'); loadTents(); }
+    else Toast.error(res?.data?.detail || 'Failed to connect.');
+  }
+
+  async function loadTents() {
+    const res = await API.get('/api/tents/');
+    const tents = res?.data || [];
+    const tbody = document.getElementById('tbody-tents');
+    tbody.innerHTML = tents.map(t => {
+      const tables = t.cached_schema?.total_tables ?? '—';
+      return `<tr>
+      <td><strong>${t.db_name}</strong></td>
+      <td><span class="badge badge-blue">${t.db_type}</span></td>
+      <td>${tables}</td>
+      <td><span class="badge ${t.is_connected ? 'badge-emerald' : 'badge-rose'}">${t.is_connected ? 'Connected' : 'Offline'}</span></td>
+      <td class="td-mono">${t.last_synced ? new Date(t.last_synced).toLocaleString() : '—'}</td>
+      <td class="td-mono">${new Date(t.db_created_at).toLocaleDateString()}</td>
+      <td class="flex gap-2">
+        <button class="btn btn-ghost btn-sm" onclick="viewSchema(${t.db_id},'${t.db_name}')"><i class="fas fa-table"></i></button>
+        <button class="btn btn-danger btn-sm" onclick="removeTent(${t.db_id},'${t.db_name}')"><i class="fas fa-trash"></i></button>
+      </td>
+    </tr>`;
+    }).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:40px">No data sources connected yet</td></tr>';
+  }
+
+  async function viewSchema(id, name) {
+    document.getElementById('schema-title').textContent = name + ' — Schema';
+    document.getElementById('schema-content').innerHTML = '<div class="spinner" style="margin:20px auto"></div>';
+    Modal.open('modal-schema');
+    const res = await API.get(`/api/tents/${id}/schema`);
+    if (res?.ok) {
+      const tables = res.data?.data?.tables || {};
+      document.getElementById('schema-content').innerHTML = Object.entries(tables).map(([tbl, meta]) =>
+        `<div style="margin-bottom:14px"><div style="color:var(--blue);font-weight:700;margin-bottom:4px">${tbl} <span style="color:var(--text-muted);font-weight:400">(${meta.row_count?.toLocaleString() || 0} rows)</span></div>
+       ${(meta.columns || []).map(c => `<div style="padding:2px 0 2px 16px;color:var(--text-secondary)">${c}</div>`).join('')}</div>`
+      ).join('') || 'No tables found.';
+    } else {
+      const msg = res?.data?.detail || res?.data?.message || res?.data?.error || 'Failed to load schema.';
+      document.getElementById('schema-content').innerHTML = `<p style="color:var(--rose)">${msg}</p>`;
+      loadTents();
+    }
+  }
+
+  function removeTent(id, name) {
+    confirmAction(`Disconnect "${name}"? The data source will be removed from SFA.`, async () => {
+      const res = await API.delete(`/api/tents/${id}`);
+      if (res?.ok) { Toast.success('Data source removed.'); loadTents(); }
+      else Toast.error(res?.data?.detail || 'Failed.');
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (!Auth.requireAuth() || !Auth.requireRole('admin', 'superadmin')) return;
+    buildConfigForm();
+    loadTents();
+  });
+</script>
+{% endblock %}

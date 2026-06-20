@@ -9,6 +9,9 @@ class TentOut(BaseSchema):
     db_name: str
     db_type: DatabaseType
     is_active: bool
+    is_connected: bool = False
+    cached_schema: Optional[Dict[str, Any]] = None
+    last_synced: Optional[datetime] = None
     db_created_at: datetime
 
 class TentCreate(BaseModel):

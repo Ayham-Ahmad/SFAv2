@@ -22,7 +22,7 @@ from .database.database import engine, Base
 async def lifespan(app: FastAPI):
     from backend.utils.encryption import validate_encryption_key
     validate_encryption_key()
-    print("✅ Encryption key valid.")
+    print("[OK] Encryption key valid.")
     
     print("Connecting to Database...")
     Base.metadata.create_all(bind=engine)
@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
     vector_db = load_vector_db()
     if vector_db:
         app.state.vector_db = vector_db
-        print("✅ Vector DB attached to app.state.")
+        print("[OK] Vector DB attached to app.state.")
 
     print("Warmup complete")
     yield

@@ -23,6 +23,14 @@ async def list_all_companies(
     return CompanyCRUD.get_all(db)
 
 
+@router.get("/all-users", response_model=List[UserOut])
+async def list_all_users(
+    current_user: User = Depends(check_super_admin_access),
+    db: Session = Depends(get_db),
+):
+    return UserCRUD.get_all(db)
+
+
 @router.get("/companies/{company_id}", response_model=CompanyOut)
 async def get_company(
     company_id: int,

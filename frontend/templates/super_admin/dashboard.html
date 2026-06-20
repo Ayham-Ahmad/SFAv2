@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Platform Dashboard{% endblock %}
+{% block page_title %}Platform Overview{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Platform Dashboard</h1>
+  <p>Real-time overview of all companies, users, and LLM usage.</p>
+</div>
+
+<div class="stat-grid" id="stat-grid">
+  <div class="stat-card"><div class="stat-label">Companies</div><div class="stat-value" id="s-companies">—</div></div>
+  <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-value" id="s-users">—</div></div>
+  <div class="stat-card"><div class="stat-label">Data Sources</div><div class="stat-value" id="s-dbs">—</div></div>
+  <div class="stat-card"><div class="stat-label">LLM Cost (all time)</div><div class="stat-value text-mono" id="s-cost">—</div></div>
+  <div class="stat-card"><div class="stat-label">Total API Calls</div><div class="stat-value" id="s-calls">—</div></div>
+  <div class="stat-card"><div class="stat-label">Avg Response Time</div><div class="stat-value text-mono" id="s-art">—</div></div>
+</div>
+
+<div class="grid-2 mt-6">
+  <div class="card">
+    <div class="card-header">
+      <div><div class="card-title">Companies</div><div class="card-sub">All onboarded tenants</div></div>
+      <a href="/super-admin/companies" class="btn btn-ghost btn-sm">View all</a>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Company</th><th>Plan</th><th>DBs</th><th>Managers</th></tr></thead>
+        <tbody id="tbody-companies">
+          <tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div><div class="card-title">LLM Usage by Model</div><div class="card-sub">Cost and token breakdown</div></div>
+      <a href="/super-admin/usage" class="btn btn-ghost btn-sm">Details</a>
+    </div>
+    <div id="usage-chart" style="height:220px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px">
+      Loading…
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!Auth.requireAuth() || !Auth.requireRole('superadmin')) return;
+
+  /* Companies summary — uses /api/tents/summary */
+  const cRes = await API.get('/api/tents/summary');
+  if (cRes?.ok) {
+    const rows = cRes.data || [];
+    document.getElementById('s-companies').textContent = rows.length;
+    document.getElementById('s-dbs').textContent = rows.reduce((a, r) => a + (r.databases_count || 0), 0);
+    const tbody = document.getElementById('tbody-companies');
+    tbody.innerHTML = rows.slice(0, 6).map(r => `
+      <tr>
+        <td><strong>${r.company_name}</strong></td>
+        <td><span class="badge badge-blue">${r.plan}</span></td>
+        <td>${r.databases_count}</td>
+        <td>${r.managers_count}</td>
+      </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">No companies yet</td></tr>';
+  } else {
+    document.getElementById('s-companies').textContent = 'Err';
+    document.getElementById('s-dbs').textContent = 'Err';
+  }
+
+  /* LLM usage */
+  const uRes = await API.get('/api/super-admin/usage/llm');
+  if (uRes?.ok) {
+    const data   = uRes.data || {};
+    /* Filter out null/undefined model keys */
+    const models = Object.keys(data).filter(m => m && m !== 'null');
+    let totalCost = 0, totalCalls = 0, totalART = 0;
+    models.forEach(m => {
+      totalCost  += data[m].cost  || 0;
+      totalCalls += data[m].calls || 0;
+      totalART   += data[m].avg_response_time || 0;
+    });
+    const n = Math.max(models.length, 1);
+    document.getElementById('s-cost').textContent = '$' + totalCost.toFixed(4);
+    document.getElementById('s-calls').textContent = totalCalls.toLocaleString();
+    document.getElementById('s-art').textContent = (totalART / n).toFixed(2) + 's';
+
+    const chartEl = document.getElementById('usage-chart');
+    if (models.length) {
+      chartEl.innerHTML = '';
+      Plotly.newPlot('usage-chart', [{
+        type: 'bar', orientation: 'h',
+        x: models.map(m => data[m].tokens || 0),
+        y: models.map(m => m.split('-').slice(-2).join('-')),
+        marker: { color: '#3B82F6' },
+        text: models.map(m => '$' + (data[m].cost || 0).toFixed(4)),
+        textposition: 'outside',
+      }], {
+        margin: { t: 10, r: 60, l: 90, b: 30 },
+        paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+        font: { color: '#94A3B8', size: 11 },
+        xaxis: { gridcolor: '#1F2D45', title: 'Tokens' },
+        yaxis: { gridcolor: '#1F2D45' },
+      }, { responsive: true, displayModeBar: false });
+    } else {
+      chartEl.textContent = 'No LLM data yet';
+    }
+  }
+
+  /* User count */
+  const admRes = await API.get('/api/super-admin/all-users');
+  if (admRes?.ok) {
+    document.getElementById('s-users').textContent = (admRes.data?.length || 0).toLocaleString();
+  }
+});
+</script>
+{% endblock %}

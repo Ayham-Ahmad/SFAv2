@@ -38,12 +38,19 @@ class PostgreSQLManager(BaseDataManager):
     def connect(self) -> bool:
         try:
             if self.conn and not self.conn.closed:
-                return True
+                try:
+                    with self.conn.cursor() as cursor:
+                        cursor.execute("SELECT 1")
+                    return True
+                except Exception:
+                    self.conn.close()
+                    self.conn = None
+                    self.is_connected = False
 
             self.conn = psycopg2.connect(**self._get_connection_params())
             self.is_connected = True
             return True
-        except Exception as e:
+        except Exception:
             self.is_connected = False
             return False
 

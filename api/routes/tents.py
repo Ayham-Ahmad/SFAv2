@@ -6,7 +6,7 @@ import sentry_sdk
 from backend.services.tenant_manager import MultiTenantDBManager
 from ..deps import get_db, get_current_active_user, check_admin_access, check_super_admin_access
 from ..database.models import User
-from ..database.schemas import TentCreate, TentOut, TentUpdate, DatabaseQueryRequest
+from ..database.schemas import TentCreate, TentOut, TentUpdate, DatabaseQueryRequest, CompanySummaryOut
 from ..database.events import TentCRUD, CompanyCRUD
 
 router = APIRouter(prefix="/api/tents", tags=["Database Tents"])
@@ -46,10 +46,23 @@ async def list_tents(
     current_user: User = Depends(check_admin_access),
     db: Session = Depends(get_db),
 ):
-    return TentCRUD.get_tents_by_company(db, current_user.company_id)
+    tents = TentCRUD.get_tents_by_company(db, current_user.company_id)
+    updated = False
+
+    for tent in tents:
+        manager = await MultiTenantDBManager.get_manager_for_tent(tent)
+        is_connected = bool(manager and manager.is_connected)
+        if tent.is_connected != is_connected:
+            tent.is_connected = is_connected
+            updated = True
+            db.add(tent)
+
+    if updated:
+        db.commit()
+    return tents
 
 
-@router.get("/summary")
+@router.get("/summary", response_model=List[CompanySummaryOut])
 async def get_global_tent_summary(
     current_user: User = Depends(check_super_admin_access),
     db: Session = Depends(get_db),
@@ -68,9 +81,16 @@ async def get_tent_schema(
         raise HTTPException(status_code=404, detail="Database not found.")
     if tent.company_id != current_user.company_id:
         raise HTTPException(status_code=403, detail="Access denied.")
+
     result = await MultiTenantDBManager.get_schema_for_tent(tent)
     if not result["success"]:
+        tent.is_connected = False
+        db.commit()
         raise HTTPException(status_code=400, detail=result["message"])
+
+    tent.is_connected = True
+    tent.last_synced = tent.last_synced or tent.last_synced
+    db.commit()
     return result
 
 

@@ -31,7 +31,13 @@ async function loadChatHistory() {
   const res = await API.get('/api/chat/history');
   if (!res?.ok) return;
   const history = res.data?.data?.history || [];
-  history.forEach(item => appendBotMessage(item.answer, item.interaction_id, false));
+  history.forEach(item => {
+    // Skip malformed or empty answers to avoid marked() crashing on null/undefined
+    if (!item) return;
+    const answer = item.answer == null ? '' : String(item.answer);
+    if (answer === '') return;
+    appendBotMessage(answer, item.interaction_id, false);
+  });
 }
 
 /* ── Send message ────────────────────────────────────────────────────────── */
@@ -194,7 +200,20 @@ function appendBotMessage(markdown, interactionId = null, showFeedback = false) 
   const box = document.getElementById('chat-messages');
   const el  = document.createElement('div');
   el.className = 'msg bot';
-  const html = typeof marked !== 'undefined' ? marked.parse(markdown) : escHtml(markdown);
+  const safeText = markdown == null ? '' : String(markdown);
+  let html = '';
+  if (safeText === '') {
+    html = '';
+  } else if (typeof marked !== 'undefined') {
+    try {
+      html = marked.parse(safeText);
+    } catch (err) {
+      console.warn('marked parse failed, falling back to plain text', err);
+      html = escHtml(safeText);
+    }
+  } else {
+    html = escHtml(safeText);
+  }
   el.innerHTML = `
     <div class="msg-avatar">AI</div>
     <div style="flex:1">

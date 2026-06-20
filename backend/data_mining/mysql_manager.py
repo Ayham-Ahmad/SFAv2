@@ -36,8 +36,16 @@ class MySQLManager(BaseDataManager):
 
     def connect(self) -> bool:
         if self.conn and self.conn.is_connected():
-            return True
-        
+            try:
+                cursor = self.conn.cursor()
+                cursor.execute("SELECT 1")
+                cursor.close()
+                return True
+            except Error:
+                self.conn.close()
+                self.conn = None
+                self.is_connected = False
+
         try:
             self.conn = mysql.connector.connect(**self._get_connection_params())
             self.is_connected = self.conn.is_connected()

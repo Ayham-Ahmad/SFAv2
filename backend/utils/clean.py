@@ -76,7 +76,7 @@ def clean_and_parse_tools(raw_text: str) -> dict:
         clean_text = match.group(1) if match else raw_text
         return json.loads(clean_text.strip())
     except Exception as e:
-        print(f"❌ JSON Parsing Error: {e}")
+        print(f"[ERROR] JSON Parsing Error: {e}")
         return None
 
 

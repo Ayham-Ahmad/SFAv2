@@ -68,10 +68,11 @@ class MultiTenantDBManager:
                 cached_manager, _ = cached
                 expected_class = DB_MANAGERS.get(tent.db_type.lower())
                 if isinstance(cached_manager, expected_class) and cached_manager.is_connected:
-                    MultiTenantDBManager._active_managers[tent.db_id] = (
-                        cached_manager, datetime.now(timezone.utc)
-                    )
-                    return cached_manager
+                    if cached_manager.connect():
+                        MultiTenantDBManager._active_managers[tent.db_id] = (
+                            cached_manager, datetime.now(timezone.utc)
+                        )
+                        return cached_manager
                 MultiTenantDBManager._disconnect_unsafe(tent.db_id)
 
             if len(MultiTenantDBManager._active_managers) >= settings.MAX_CACHED_CONNECTIONS:

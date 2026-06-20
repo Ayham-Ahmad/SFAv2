@@ -23,14 +23,15 @@ async def get_relevant_tents(
 ) -> Tuple[List[int], Dict[str, Any]]:
 
     tents = TentCRUD.get_tents_by_company(db, company_id)
+    connected_tents = [t for t in tents if getattr(t, 'is_connected', False)]
 
-    if not tents:
+    if not connected_tents:
         return [], usage_metrics
 
-    if len(tents) == 1:
-        return [tents[0].db_id], usage_metrics
+    if len(connected_tents) == 1:
+        return [connected_tents[0].db_id], usage_metrics
 
-    tents_summary, valid_ids = prepare_tents_summary(tents)
+    tents_summary, valid_ids = prepare_tents_summary(connected_tents)
     prompt = TentAgentPrompt.prompt(user_query, tents_summary)
 
     try:
