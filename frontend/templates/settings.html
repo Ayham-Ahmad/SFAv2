@@ -8,25 +8,45 @@
   <!-- Company info card -->
   <div class="card" style="margin-bottom:20px">
     <div class="card-header">
-      <div><div class="card-title">Company Profile</div><div class="card-sub">Your organisation's plan and limits.</div></div>
+      <div>
+        <div class="card-title">Company Profile</div>
+        <div class="card-sub">Your organisation's plan and limits.</div>
+      </div>
     </div>
     <div class="stat-grid" id="company-stats">
-      <div class="stat-card"><div class="stat-label">Plan</div><div class="stat-value" id="cs-plan" style="font-size:18px">—</div></div>
-      <div class="stat-card"><div class="stat-label">Data Sources</div><div class="stat-value" id="cs-dbs">—</div></div>
-      <div class="stat-card"><div class="stat-label">Team Size</div><div class="stat-value" id="cs-users">—</div></div>
-      <div class="stat-card"><div class="stat-label">Storage Used</div><div class="stat-value text-mono" id="cs-storage">—</div></div>
+      <div class="stat-card">
+        <div class="stat-label">Plan</div>
+        <div class="stat-value" id="cs-plan" style="font-size:18px">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Data Sources</div>
+        <div class="stat-value" id="cs-dbs">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Team Size</div>
+        <div class="stat-value" id="cs-users">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Storage Used</div>
+        <div class="stat-value text-mono" id="cs-storage">—</div>
+      </div>
     </div>
   </div>
 
   <!-- Graph config -->
   <div class="card" style="margin-bottom:20px">
-    <div class="card-header"><div class="card-title">Default Chart Settings</div><div class="card-sub">Controls how the AI generates charts.</div></div>
+    <div class="card-header">
+      <div class="card-title">Default Chart Settings</div>
+      <div class="card-sub">Controls how the AI generates charts.</div>
+    </div>
     <div class="grid-2">
       <div class="form-group">
         <label class="form-label">Default Chart Type</label>
         <select class="form-control" id="cfg-graph-type">
-          <option value="bar">Bar</option><option value="line">Line</option>
-          <option value="pie">Pie</option><option value="area">Area</option>
+          <option value="bar">Bar</option>
+          <option value="line">Line</option>
+          <option value="pie">Pie</option>
+          <option value="area">Area</option>
         </select>
       </div>
       <div class="form-group">
@@ -47,7 +67,10 @@
 
   <!-- Metrics config -->
   <div class="card" style="margin-bottom:20px">
-    <div class="card-header"><div class="card-title">Dashboard Metrics</div><div class="card-sub">Configure the primary KPI shown on the manager dashboard.</div></div>
+    <div class="card-header">
+      <div class="card-title">Dashboard Metrics</div>
+      <div class="card-sub">Configure the primary KPI shown on the manager dashboard.</div>
+    </div>
     <div class="grid-2">
       <div class="form-group">
         <label class="form-label">Metric Column</label>
@@ -68,7 +91,9 @@
 
   <!-- Theme -->
   <div class="card">
-    <div class="card-header"><div class="card-title">Appearance</div></div>
+    <div class="card-header">
+      <div class="card-title">Appearance</div>
+    </div>
     <div class="form-group">
       <label class="form-label">Theme</label>
       <select class="form-control" id="cfg-theme" style="width:200px">
@@ -85,49 +110,49 @@
 
 {% block scripts %}
 <script>
-let companyData = null;
+  let companyData = null;
 
-document.addEventListener('DOMContentLoaded', async () => {
-  if (!Auth.requireAuth() || !Auth.requireRole('admin','superadmin')) return;
-  const res = await API.get('/api/admin/company');
-  if (!res?.ok) { Toast.error('Failed to load company data.'); return; }
-  companyData = res.data;
-  const limits = companyData.settings?.tent_config || {};
-  document.getElementById('cs-plan').textContent    = companyData.plan?.toUpperCase() || '—';
-  document.getElementById('cs-dbs').textContent     = `${companyData.databases_count} / ${limits.total_allowed||'∞'}`;
-  document.getElementById('cs-users').textContent   = `${companyData.managers_count}`;
-  document.getElementById('cs-storage').textContent = `${(companyData.total_storage_mb||0).toFixed(1)} MB`;
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (!Auth.requireAuth() || !Auth.requireRole('admin', 'superadmin')) return;
+    const res = await API.get('/api/admin/company');
+    if (!res?.ok) { Toast.error('Failed to load company data.'); return; }
+    companyData = res.data;
+    const limits = companyData.settings?.tent_config || {};
+    document.getElementById('cs-plan').textContent = companyData.plan?.toUpperCase() || '—';
+    document.getElementById('cs-dbs').textContent = `${companyData.databases_count} / ${limits.total_allowed || '∞'}`;
+    document.getElementById('cs-users').textContent = `${companyData.managers_count}`;
+    document.getElementById('cs-storage').textContent = `${(companyData.total_storage_mb || 0).toFixed(1)} MB`;
 
-  const s = companyData.settings || {};
-  if (s.graph_config) {
-    document.getElementById('cfg-graph-type').value  = s.graph_config.graph_type || 'bar';
-    document.getElementById('cfg-graph-title').value = s.graph_config.title || '';
-    document.getElementById('cfg-x-col').value       = s.graph_config.x_column || '';
-    document.getElementById('cfg-y-col').value       = s.graph_config.y_column || '';
+    const s = companyData.settings || {};
+    if (s.graph_config) {
+      document.getElementById('cfg-graph-type').value = s.graph_config.graph_type || 'bar';
+      document.getElementById('cfg-graph-title').value = s.graph_config.title || '';
+      document.getElementById('cfg-x-col').value = s.graph_config.x_column || '';
+      document.getElementById('cfg-y-col').value = s.graph_config.y_column || '';
+    }
+    if (s.metrics_config) {
+      document.getElementById('cfg-metric-col').value = s.metrics_config.metric_column || '';
+      document.getElementById('cfg-metric-fmt').value = s.metrics_config.metric_format || 'currency';
+    }
+    if (s.theme_config) document.getElementById('cfg-theme').value = s.theme_config || 'dark';
+  });
+
+  async function saveSettings() {
+    const settings = {
+      graph_config: {
+        graph_type: document.getElementById('cfg-graph-type').value,
+        title: document.getElementById('cfg-graph-title').value,
+        x_column: document.getElementById('cfg-x-col').value,
+        y_column: document.getElementById('cfg-y-col').value,
+      },
+      metrics_config: {
+        metric_column: document.getElementById('cfg-metric-col').value,
+        metric_format: document.getElementById('cfg-metric-fmt').value,
+      },
+    };
+    const res = await API.patch('/api/admin/company', { settings });
+    if (res?.ok) Toast.success('Settings saved.');
+    else Toast.error(res?.data?.detail || 'Save failed.');
   }
-  if (s.metrics_config) {
-    document.getElementById('cfg-metric-col').value = s.metrics_config.metric_column || '';
-    document.getElementById('cfg-metric-fmt').value = s.metrics_config.metric_format || 'currency';
-  }
-  if (s.theme_config) document.getElementById('cfg-theme').value = s.theme_config || 'dark';
-});
-
-async function saveSettings() {
-  const settings = {
-    graph_config: {
-      graph_type: document.getElementById('cfg-graph-type').value,
-      title:      document.getElementById('cfg-graph-title').value,
-      x_column:   document.getElementById('cfg-x-col').value,
-      y_column:   document.getElementById('cfg-y-col').value,
-    },
-    metrics_config: {
-      metric_column: document.getElementById('cfg-metric-col').value,
-      metric_format: document.getElementById('cfg-metric-fmt').value,
-    },
-  };
-  const res = await API.patch('/api/admin/company', { settings });
-  if (res?.ok) Toast.success('Settings saved.');
-  else Toast.error(res?.data?.detail || 'Save failed.');
-}
 </script>
 {% endblock %}

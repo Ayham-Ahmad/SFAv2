@@ -4,29 +4,60 @@
 
 {% block content %}
 <div class="stat-grid" style="margin-bottom:24px">
-  <div class="stat-card"><div class="stat-label">Total Cost</div><div class="stat-value text-mono" id="u-cost">—</div></div>
-  <div class="stat-card"><div class="stat-label">Total Tokens</div><div class="stat-value" id="u-tokens">—</div></div>
-  <div class="stat-card"><div class="stat-label">API Calls</div><div class="stat-value" id="u-calls">—</div></div>
-  <div class="stat-card"><div class="stat-label">Avg Response Time</div><div class="stat-value text-mono" id="u-art">—</div></div>
-  <div class="stat-card"><div class="stat-label">Positive Feedback</div><div class="stat-value" id="u-fb">—</div></div>
+  <div class="stat-card">
+    <div class="stat-label">Total Cost</div>
+    <div class="stat-value text-mono" id="u-cost">—</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Total Tokens</div>
+    <div class="stat-value" id="u-tokens">—</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">API Calls</div>
+    <div class="stat-value" id="u-calls">—</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Avg Response Time</div>
+    <div class="stat-value text-mono" id="u-art">—</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Positive Feedback</div>
+    <div class="stat-value" id="u-fb">—</div>
+  </div>
 </div>
 
 <div class="grid-2">
   <div class="card">
-    <div class="card-header"><div class="card-title">Cost by Model</div></div>
+    <div class="card-header">
+      <div class="card-title">Cost by Model</div>
+    </div>
     <div id="chart-cost" style="height:240px"></div>
   </div>
   <div class="card">
-    <div class="card-header"><div class="card-title">Token Distribution</div></div>
+    <div class="card-header">
+      <div class="card-title">Token Distribution</div>
+    </div>
     <div id="chart-tokens" style="height:240px"></div>
   </div>
 </div>
 
 <div class="card mt-6">
-  <div class="card-header"><div class="card-title">Model Performance Table</div></div>
+  <div class="card-header">
+    <div class="card-title">Model Performance Table</div>
+  </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Model</th><th>Total Cost</th><th>Tokens</th><th>API Calls</th><th>Avg Response</th><th>Avg Memory</th><th>Feedback Score</th></tr></thead>
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Total Cost</th>
+          <th>Tokens</th>
+          <th>API Calls</th>
+          <th>Avg Response</th>
+          <th>Avg Memory</th>
+          <th>Feedback Score</th>
+        </tr>
+      </thead>
       <tbody id="tbody-usage"></tbody>
     </table>
   </div>
@@ -35,58 +66,58 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', async () => {
-  if (!Auth.requireAuth() || !Auth.requireRole('superadmin')) return;
-  const res = await API.get('/api/super-admin/usage/llm');
-  if (!res?.ok) { Toast.error('Failed to load usage data.'); return; }
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (!Auth.requireAuth() || !Auth.requireRole('superadmin')) return;
+    const res = await API.get('/api/super-admin/usage/llm');
+    if (!res?.ok) { Toast.error('Failed to load usage data.'); return; }
 
-  const raw    = res.data || {};
-  /* Filter out null/undefined model entries (stale rows from dev phase) */
-  const data   = Object.fromEntries(Object.entries(raw).filter(([k]) => k && k !== 'null'));
-  const models = Object.keys(data);
+    const raw = res.data || {};
+    /* Filter out null/undefined model entries (stale rows from dev phase) */
+    const data = Object.fromEntries(Object.entries(raw).filter(([k]) => k && k !== 'null'));
+    const models = Object.keys(data);
 
-  let totCost = 0, totTok = 0, totCalls = 0, totART = 0, totFB = 0;
-  models.forEach(m => {
-    totCost  += data[m].cost  || 0;
-    totTok   += data[m].tokens || 0;
-    totCalls += data[m].calls || 0;
-    totART   += data[m].avg_response_time || 0;
-    totFB    += data[m].feedback || 0;
-  });
-  const n = Math.max(models.length, 1);
-  document.getElementById('u-cost').textContent   = '$' + totCost.toFixed(4);
-  document.getElementById('u-tokens').textContent = (totTok / 1e6).toFixed(2) + 'M';
-  document.getElementById('u-calls').textContent  = totCalls.toLocaleString();
-  document.getElementById('u-art').textContent    = (totART / n).toFixed(2) + 's';
-  document.getElementById('u-fb').textContent     = (totFB / n).toFixed(1) + '%';
+    let totCost = 0, totTok = 0, totCalls = 0, totART = 0, totFB = 0;
+    models.forEach(m => {
+      totCost += data[m].cost || 0;
+      totTok += data[m].tokens || 0;
+      totCalls += data[m].calls || 0;
+      totART += data[m].avg_response_time || 0;
+      totFB += data[m].feedback || 0;
+    });
+    const n = Math.max(models.length, 1);
+    document.getElementById('u-cost').textContent = '$' + totCost.toFixed(4);
+    document.getElementById('u-tokens').textContent = (totTok / 1e6).toFixed(2) + 'M';
+    document.getElementById('u-calls').textContent = totCalls.toLocaleString();
+    document.getElementById('u-art').textContent = (totART / n).toFixed(2) + 's';
+    document.getElementById('u-fb').textContent = (totFB / n).toFixed(1) + '%';
 
-  const shortNames = models.map(m => m.split('-').slice(-2).join('-'));
-  const cfg = { responsive: true, displayModeBar: false };
-  const layout = extra => ({
-    ...extra,
-    paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
-    font: { color: '#94A3B8', size: 11 }, margin: { t: 10, r: 20, l: 20, b: 40 },
-  });
+    const shortNames = models.map(m => m.split('-').slice(-2).join('-'));
+    const cfg = { responsive: true, displayModeBar: false };
+    const layout = extra => ({
+      ...extra,
+      paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+      font: { color: '#94A3B8', size: 11 }, margin: { t: 10, r: 20, l: 20, b: 40 },
+    });
 
-  if (models.length) {
-    Plotly.newPlot('chart-cost', [{
-      type: 'bar', x: shortNames,
-      y: models.map(m => data[m].cost || 0),
-      marker: { color: ['#3B82F6', '#10B981', '#8B5CF6'].slice(0, models.length) },
-      text: models.map(m => '$' + (data[m].cost || 0).toFixed(4)),
-      textposition: 'outside',
-    }], layout({ xaxis: { gridcolor: '#1F2D45' }, yaxis: { gridcolor: '#1F2D45', title: 'Cost ($)' } }), cfg);
+    if (models.length) {
+      Plotly.newPlot('chart-cost', [{
+        type: 'bar', x: shortNames,
+        y: models.map(m => data[m].cost || 0),
+        marker: { color: ['#3B82F6', '#10B981', '#8B5CF6'].slice(0, models.length) },
+        text: models.map(m => '$' + (data[m].cost || 0).toFixed(4)),
+        textposition: 'outside',
+      }], layout({ xaxis: { gridcolor: '#1F2D45' }, yaxis: { gridcolor: '#1F2D45', title: 'Cost ($)' } }), cfg);
 
-    Plotly.newPlot('chart-tokens', [{
-      type: 'pie', labels: shortNames,
-      values: models.map(m => data[m].tokens || 0),
-      marker: { colors: ['#3B82F6', '#10B981', '#8B5CF6'] },
-      textinfo: 'label+percent', hole: 0.4,
-    }], layout({}), cfg);
-  }
+      Plotly.newPlot('chart-tokens', [{
+        type: 'pie', labels: shortNames,
+        values: models.map(m => data[m].tokens || 0),
+        marker: { colors: ['#3B82F6', '#10B981', '#8B5CF6'] },
+        textinfo: 'label+percent', hole: 0.4,
+      }], layout({}), cfg);
+    }
 
-  document.getElementById('tbody-usage').innerHTML = models.length
-    ? models.map(m => `
+    document.getElementById('tbody-usage').innerHTML = models.length
+      ? models.map(m => `
       <tr>
         <td class="td-mono">${m}</td>
         <td class="td-mono" style="color:var(--amber)">$${(data[m].cost || 0).toFixed(4)}</td>
@@ -96,7 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         <td class="td-mono">${(data[m].avg_memory_usage || 0).toFixed(1)} MB</td>
         <td><span class="badge ${(data[m].feedback || 0) > 70 ? 'badge-emerald' : 'badge-amber'}">${(data[m].feedback || 0).toFixed(1)}%</span></td>
       </tr>`).join('')
-    : '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px">No usage data yet</td></tr>';
-});
+      : '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px">No usage data yet</td></tr>';
+  });
 </script>
 {% endblock %}

@@ -1,116 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}SFA{% endblock %} — Smart Financial Advisor</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/css/style.css">
-  {% block extra_head %}{% endblock %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <!-- {% block extra_head %}{% endblock %} -->
 </head>
+
 <body>
-<div class="layout">
+    <div class="layout">
 
-  <!-- Sidebar -->
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-logo">
-      <div class="logo-icon">S</div>
-      <span class="logo-text">SFA</span>
-    </div>
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-logo">
+                <div class="logo-icon">S</div>
+                <span class="logo-text">SFA</span>
+            </div>
+            <nav class="sidebar-nav" id="sidebar-nav"></nav>
+            <div class="sidebar-footer">
+                <div class="user-pill">
+                    <div class="user-avatar" id="sidebar-avatar-init">U</div>
+                    <div class="user-info">
+                        <div class="u-name" id="sidebar-username">Loading...</div>
+                        <div class="u-role" id="sidebar-role"></div>
+                    </div>
+                </div>
+                <a class="nav-item" href="#" id="logout-btn" style="color: var(--rose);">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span class="nav-label">Sign Out</span>
+                </a>
+            </div>
+        </aside>
 
-    <nav class="sidebar-nav" id="sidebar-nav">
-      <!-- Role-specific nav injected by JS -->
-    </nav>
 
-    <div class="sidebar-footer">
-      <div class="user-pill">
-        <div class="user-avatar" id="sidebar-avatar-init">U</div>
-        <div class="user-info">
-          <div class="u-name" id="sidebar-username">Loading…</div>
-          <div class="u-role" id="sidebar-role"></div>
+        <!-- Main -->
+        <div class="main">
+            <header class="topbar">
+                <button id="sidebar-toggle" class="btn btn-ghost btn-icon" style="margin-right: 4px;"
+                    onclick="Sidebar.toggle()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h1 class="topbar-title">{% block page_title %}{% endblock %}</h1>
+                <div class="topbar-actions">{% block topbar_actions %}{% endblock %}</div>
+            </header>
+            <div class="content" id="page-content">
+                {% block content %}{% endblock %}
+            </div>
         </div>
-      </div>
-      <a class="nav-item" href="#" id="logout-btn" style="color:var(--rose)">
-        <i class="fas fa-sign-out-alt"></i>
-        <span class="nav-label">Sign Out</span>
-      </a>
+
     </div>
-  </aside>
 
-  <!-- Main -->
-  <div class="main">
-    <header class="topbar">
-      <button id="sidebar-toggle" class="btn btn-ghost btn-icon" style="margin-right:4px">
-        <i class="fas fa-bars"></i>
-      </button>
-      <h1 class="topbar-title">{% block page_title %}{% endblock %}</h1>
-      <div class="topbar-actions">{% block topbar_actions %}{% endblock %}</div>
-    </header>
 
-    <div class="content" id="page-content">
-      {% block content %}{% endblock %}
+    <!-- Confirmation message block -->
+    <div class="modal-overlay" id="confirm-modal">
+        <div class="modal" style="max-width: 380px;">
+            <div class="modal-header">
+                <span class="modal-title"><i class="fas fa-exclamation-triangle"
+                        style="color: var(--amber); margin-right:8px"></i>Confirm Action</span>
+                <button class="modal-close">x</button>
+            </div>
+            <p id="confirm-message" style="font-size: 13px;color:var(--text-secondary)"></p>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="Modal.close('confirm-modal')">Cancel</button>
+                <button class="btn btn-danger" id="confirm-ok">Confirm</button>
+            </div>
+        </div>
     </div>
-  </div>
-</div>
 
-<!-- Confirm modal (shared) -->
-<div class="modal-overlay" id="confirm-modal">
-  <div class="modal" style="max-width:380px">
-    <div class="modal-header">
-      <span class="modal-title"><i class="fas fa-exclamation-triangle" style="color:var(--amber);margin-right:8px"></i>Confirm Action</span>
-      <button class="modal-close">×</button>
-    </div>
-    <p id="confirm-message" style="font-size:13px;color:var(--text-secondary)"></p>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="Modal.close('confirm-modal')">Cancel</button>
-      <button class="btn btn-danger" id="confirm-ok">Confirm</button>
-    </div>
-  </div>
-</div>
 
-<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="/static/js/api.js"></script>
-<script src="/static/js/auth.js"></script>
-<script src="/static/js/base.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script src="/static/js/base.js"></script>
 
-<script>
-/* Build role-aware nav on every page */
-(function buildNav() {
-  const user = Auth.getUser();
-  if (!user) { window.location.href = '/login'; return; }
-  const nav = document.getElementById('sidebar-nav');
-  const role = user.role;
+    {% block scripts %}{% endblock %}
 
-  const shared = `
-    <div class="nav-section-label">Workspace</div>
-    <a class="nav-item" href="/analytics"><i class="fas fa-robot"></i><span class="nav-label">AI Advisor</span></a>`;
-
-  const adminNav = `
-    <div class="nav-section-label">Management</div>
-    <a class="nav-item" href="/admin/settings"><i class="fas fa-building"></i><span class="nav-label">Company Settings</span></a>
-    <a class="nav-item" href="/admin/tents"><i class="fas fa-database"></i><span class="nav-label">Data Sources</span></a>
-    <a class="nav-item" href="/admin/team"><i class="fas fa-users"></i><span class="nav-label">Team</span></a>`;
-
-  const superNav = `
-    <div class="nav-section-label">Platform</div>
-    <a class="nav-item" href="/super-admin/dashboard"><i class="fas fa-tachometer-alt"></i><span class="nav-label">Dashboard</span></a>
-    <a class="nav-item" href="/super-admin/companies"><i class="fas fa-building"></i><span class="nav-label">Companies</span></a>
-    <a class="nav-item" href="/super-admin/users"><i class="fas fa-users"></i><span class="nav-label">All Users</span></a>
-    <a class="nav-item" href="/super-admin/usage"><i class="fas fa-chart-bar"></i><span class="nav-label">LLM Usage</span></a>`;
-
-  const profileNav = `
-    <div class="nav-section-label">Account</div>
-    <a class="nav-item" href="/profile"><i class="fas fa-user-cog"></i><span class="nav-label">My Profile</span></a>`;
-
-  if (role === 'superadmin') nav.innerHTML = superNav + shared + profileNav;
-  else if (role === 'admin')  nav.innerHTML = shared + adminNav + profileNav;
-  else                        nav.innerHTML = shared + profileNav;
-})();
-</script>
-
-{% block scripts %}{% endblock %}
 </body>
+
 </html>

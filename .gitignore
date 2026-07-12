@@ -11,3 +11,4 @@ backend/core/RAG/VectorDB/
 PrintAllDb.py
 __pycache__/
 *.py[cod]
+tsconfig.json
