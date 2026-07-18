@@ -1,164 +1,70 @@
-"use strict";
-const Sidebar = (() => {
-  let collapsed = localStorage.getItem("sidebar_collapsed") === "1";
-  console.log(collapsed);
-  const apply = () => {
-    const el = document.getElementById("sidebar");
-    if (!el) return;
-    el.classList.toggle("collapsed", collapsed);
-  };
-  const toggle = () => {
-    const isMobile = window.innerWidth < 768;
-    if (isMobile) {
-      const el = document.getElementById("sidebar");
-      el?.classList.toggle("mobile-open");
-    } else {
-      collapsed = !collapsed;
-      localStorage.setItem("sidebar_collapsed", collapsed ? "1" : "0");
-      apply();
+const storedUser = localStorage.getItem("user");
+if (storedUser) {
+    const data = JSON.parse(storedUser);
+    const usernameElement = document.querySelector("#username_tag");
+    if (usernameElement) {
+        usernameElement.textContent = data.user.username;
     }
-  };
-  document.addEventListener("DOMContentLoaded", () => {
-    apply();
-    Auth.hydrateSidebar();
-    document
-      .getElementById("sidebar-toggle")
-      ?.addEventListener("click", toggle);
-    document
-      .getElementById("logout-btn")
-      ?.addEventListener("click", () => Auth.logout());
-    const path = window.location.pathname;
-    document.querySelectorAll(".nav-item").forEach((el) => {
-      const href = el.getAttribute("href");
-      if (href && path.startsWith(href) && href !== "/") {
-        el.classList.add("active");
-      }
-    });
-  });
-  return { toggle };
-})();
-const Toast = (() => {
-  const show = (message, type = "info", duration = 4000) => {
-    let container = document.getElementById("toast-container");
-    if (!container) {
-      container = document.createElement("div");
-      container.id = "toast-container";
-      container.className = "toast-container";
-      document.body.appendChild(container);
+    const linkElement = document.querySelector("#home_link");
+    if (linkElement) {
+        let link = "none";
+        if (data.user.role === "superadmin") {
+            link = "/super-admin/dashboard";
+        }
+        else if (data.user.role === "admin") {
+            link = "/admin/settings";
+        }
+        linkElement.href = link;
     }
-    const icons = {
-      success: "fa-check-circle",
-      error: "fa-times-circle",
-      info: "fa-info-circle",
+}
+export function showToast(message, type) {
+    const toast = document.getElementById("toast_notification");
+    const toastMessage = document.getElementById("toast_message");
+    if (toast && toastMessage) {
+        toastMessage.textContent = message;
+        toast.className = "toast";
+        toast.classList.add(type);
+        toast.classList.add("show");
+        setTimeout(() => {
+            toast.classList.remove("show");
+        }, 3000);
+    }
+}
+export function confirmDoubleAction(message, onConfirm) {
+    const modal = document.getElementById("global_confirm_modal");
+    const msgEl = document.getElementById("confirm_message");
+    const cancelBtn = document.getElementById("confirm_cancel_btn");
+    const actionBtn = document.getElementById("confirm_action_btn");
+    if (!modal || !msgEl || !cancelBtn || !actionBtn)
+        return;
+    msgEl.textContent = message;
+    actionBtn.textContent = "Delete";
+    modal.style.display = "flex";
+    let clickCount = 0;
+    const handleAction = () => {
+        clickCount++;
+        if (clickCount === 1) {
+            actionBtn.textContent = "Click again to confirm";
+            actionBtn.style.backgroundColor = "#ff6b6b";
+            actionBtn.style.color = "#2a1111";
+        }
+        else if (clickCount === 2) {
+            cleanup();
+            onConfirm();
+        }
     };
-    const colors = {
-      success: "var(--emerald)",
-      error: "var(--rose)",
-      info: "var(--blue)",
+    const handleCancel = () => {
+        cleanup();
     };
-    const toast = document.createElement("div");
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `<i class="fas ${icons[type] || icons.info}" style="color:${colors[type] || colors.info}"></i><span>${message}</span>`;
-    container.appendChild(toast);
-    setTimeout(() => {
-      toast.style.opacity = "0";
-      toast.style.transform = "translateX(40px)";
-      toast.style.transition = ".3s";
-      setTimeout(() => toast.remove(), 300);
-    }, duration);
-  };
-  return {
-    success: (m) => show(m, "success"),
-    error: (m) => show(m, "error"),
-    info: (m) => show(m, "info"),
-  };
-})();
-const Modal = (() => {
-  const open = (id) => {
-    document.getElementById(id)?.classList.add("open");
-  };
-  const close = (id) => {
-    document.getElementById(id)?.classList.remove("open");
-  };
-  document.addEventListener("DOMContentLoaded", () => {
-    document.querySelectorAll(".modal-overlay").forEach((overlay) => {
-      overlay.addEventListener("click", (e) => {
-        if (e.target === overlay) overlay.classList.remove("open");
-      });
-    });
-    document.querySelectorAll(".modal-close").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        btn.closest(".modal-overlay")?.classList.remove("open");
-      });
-    });
-  });
-  return { open, close };
-})();
-const Table = (() => {
-  const searchFilter = (inputId, tableId) => {
-    const input = document.getElementById(inputId);
-    const table = document.getElementById(tableId);
-    if (!input || !table) return;
-    input.addEventListener("input", () => {
-      const query = input.value.toLowerCase();
-      table.querySelectorAll("tbody tr").forEach((row) => {
-        row.style.display = row.textContent?.toLowerCase().includes(query)
-          ? ""
-          : "none";
-      });
-    });
-  };
-  return { searchFilter };
-})();
-const confirmAction = (message, onConfirm) => {
-  const overlay = document.getElementById("confirm-modal");
-  const msg = document.getElementById("confirm-message");
-  const btn = document.getElementById("confirm-ok");
-  if (!overlay) return onConfirm();
-  if (msg) msg.textContent = message;
-  Modal.open("confirm-modal");
-  const handler = () => {
-    onConfirm();
-    Modal.close("confirm-modal");
-    btn?.removeEventListener("click", handler);
-  };
-  btn?.addEventListener("click", handler);
-};
-const buildNav = () => {
-  const user = Auth.getUser();
-  if (!user) {
-    window.location.href = "/login";
-    return;
-  }
-  const nav = document.getElementById("sidebar-nav");
-  if (!nav) return;
-  const role = user.role;
-  const shared = `
-    <div class="nav-section-label">Workspace</div>
-    <a class="nav-item" href="/analytics"><i class="fas fa-robot"></i><span class="nav-label">AI Advisor</span></a>`;
-  const adminNav = `
-    <div class="nav-section-label">Management</div>
-    <a class="nav-item" href="/admin/settings"><i class="fas fa-building"></i><span class="nav-label">Company Settings</span></a>
-    <a class="nav-item" href="/admin/tents"><i class="fas fa-database"></i><span class="nav-label">Data Sources</span></a>
-    <a class="nav-item" href="/admin/team"><i class="fas fa-users"></i><span class="nav-label">Team</span></a>`;
-  const superNav = `
-    <div class="nav-section-label">Platform</div>
-    <a class="nav-item" href="/super-admin/dashboard"><i class="fas fa-tachometer-alt"></i><span class="nav-label">Dashboard</span></a>
-    <a class="nav-item" href="/super-admin/companies"><i class="fas fa-building"></i><span class="nav-label">Companies</span></a>
-    <a class="nav-item" href="/super-admin/users"><i class="fas fa-users"></i><span class="nav-label">All Users</span></a>
-    <a class="nav-item" href="/super-admin/usage"><i class="fas fa-chart-bar"></i><span class="nav-label">LLM Usage</span></a>`;
-  const profileNav = `
-    <div class="nav-section-label">Account</div>
-    <a class="nav-item" href="/profile"><i class="fas fa-user-cog"></i><span class="nav-label">My Profile</span></a>`;
-  switch (role) {
-    case "superadmin":
-      nav.innerHTML = superNav + shared + profileNav;
-      break;
-    case "admin":
-      nav.innerHTML = shared + adminNav + profileNav;
-      break;
-    default:
-      nav.innerHTML = shared + profileNav;
-  }
-};
-buildNav();
+    const cleanup = () => {
+        modal.style.display = "none";
+        actionBtn.style.backgroundColor = "";
+        actionBtn.style.color = "";
+        actionBtn.removeEventListener("click", handleAction);
+        cancelBtn.removeEventListener("click", handleCancel);
+    };
+    actionBtn.addEventListener("click", handleAction);
+    cancelBtn.addEventListener("click", handleCancel);
+}
+window.showToast = showToast;
+window.confirmDoubleAction = confirmDoubleAction;

@@ -11,7 +11,7 @@ class UserPreferences(BaseModel):
 class UserBase(BaseSchema):
     username: str
     email: EmailStr
-    role: UserRole
+    role: Optional[UserRole] = None
     company_id: Optional[int] = None
 
 class UserCreate(UserBase):

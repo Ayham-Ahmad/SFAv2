@@ -7,7 +7,8 @@ from .companies import (
     CompanyBase, CompanyCreate, CompanyUpdate, CompanyOut, 
     CompanySettings, CompanyTentSettings, PLAN_LIMITS,
     CompanySummaryOut, RegisterRequest, ForgotPasswordRequest,
-    ResetPasswordRequest, ChangePasswordRequest, OnboardRequest
+    ResetPasswordRequest, ChangePasswordRequest, OnboardRequest,
+    RegisterResponse
 )
 
 from .tents import TentOut, TentCreate, TentUpdate, DatabaseQueryRequest
@@ -27,7 +28,7 @@ __all__ = [
     "CompanyBase", "CompanyCreate", "CompanyUpdate", "CompanyOut", 
     "CompanySettings", "CompanyTentSettings", "PLAN_LIMITS", "CompanySummaryOut", "OnboardRequest",
     "RegisterRequest", "ForgotPasswordRequest", "ResetPasswordRequest", "ChangePasswordRequest",
-    "TentOut", "TentCreate", "TentUpdate", "DatabaseQueryRequest",
+    "TentOut", "TentCreate", "TentUpdate", "DatabaseQueryRequest", "RegisterResponse",
     "InteractionOut", "ChatRequest", "InteractionCreate", "Performance", "get_usage_metrics_dict",
     "ModificationOut",
     "SQLiteConfig", "PostgresConfig", "MySQLConfig", 

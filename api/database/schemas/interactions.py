@@ -53,3 +53,10 @@ def get_usage_metrics_dict() -> dict:
             "graph":     0,
         },
     }
+
+class DashboardOut(BaseSchema):
+    active_users: int
+    companies: int
+    llm_cost: float
+    active_databases: int
+    total_interactions: int

@@ -1,5 +1,4 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status, Cookie
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
 
@@ -10,18 +9,27 @@ from .database.events import UserCRUD
 from .config import settings
 from .constants import UserRole
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+        
+async def get_token_from_cookie(
+    access_token: str | None = Cookie(default=None)
+):    
+    if not access_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated"
+        )
+
+    return access_token
 
 async def get_current_user(
     db: Session = Depends(get_db),
-    token: str  = Depends(oauth2_scheme),
+    token: str  = Depends(get_token_from_cookie),
 ) -> User:
     exc = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -47,12 +55,12 @@ async def get_current_active_user(current_user: User= Depends(get_current_user))
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
-async def check_super_admin_access(current_user: User = Depends(get_current_user)) -> User:
+async def check_super_admin_access(current_user: User = Depends(get_current_active_user)) -> User:
     if current_user.role != UserRole.SUPERADMIN:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Special access required.")
     return current_user
 
 async def check_admin_access(current_user: User = Depends(get_current_active_user)) -> User:
-    if current_user.role not in (UserRole.ADMIN, UserRole.SUPERADMIN):
+    if current_user.role not in (UserRole.ADMIN):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Special access required.")
     return current_user

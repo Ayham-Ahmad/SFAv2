@@ -70,7 +70,6 @@ app.include_router(pages_router)
 
 app.mount("/static", StaticFiles(directory="./frontend/static"), name="static")
 
-
 if __name__ == "__main__":
     print("Starting SFA Server...")
     uvicorn.run("api.main:app", host="127.0.0.1", port=8000, reload=True)

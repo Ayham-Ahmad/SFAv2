@@ -54,10 +54,18 @@ class CompanyBase(BaseSchema):
     company_name: str
     plan: CompanyPlan
     settings: CompanySettings = Field(default_factory=CompanySettings)
-
+    
+class RegisterRequest(BaseSchema):
+    username: str
+    email: EmailStr
+    password: str
+    company_name: str
+    
+class RegisterResponse(BaseModel):
+    success: bool
+    
 class CompanyCreate(BaseSchema):
     company_name: str
-    plan: CompanyPlan = CompanyPlan.FREE
     
 class OnboardRequest(BaseModel):
     company_name:   str
@@ -149,12 +157,6 @@ MODEL_PRICING: Dict[AIModel, ModelCostConfig] = {
         context_window=8192
     )
 }
-
-class RegisterRequest(BaseModel):
-    username:   str
-    email:      EmailStr
-    password:   str
-    company_id: int
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr

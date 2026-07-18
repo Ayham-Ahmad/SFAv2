@@ -118,3 +118,10 @@ class InteractionCRUD:
             db.commit()
             db.refresh(record)
         return record
+    
+    @staticmethod
+    def get_llm_cost(db: Session) -> float:
+        total_cost = db.query(func.sum(Interaction.cost)).scalar()
+        total_interactions = db.query(func.sum(Interaction.interaction_id)).scalar()
+
+        return {"cost": total_cost, 'interactions': total_interactions}

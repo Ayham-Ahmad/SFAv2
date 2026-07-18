@@ -6,7 +6,9 @@ from typing import List
 from ..deps import get_db, check_super_admin_access
 from ..database.models import User
 from ..database.schemas import CompanyOut, UserOut, UserUpdate, CompanyCreate as CC, OnboardRequest
+from ..database.schemas.interactions import DashboardOut
 from ..database.events import CompanyCRUD, UserCRUD, InteractionCRUD
+from ..database.events.dashboard_events import Dashboard
 from backend.utils.responses import create_response
 from ..constants import UserRole
 
@@ -76,9 +78,19 @@ async def offboard_company(
     current_user: User = Depends(check_super_admin_access),
     db: Session = Depends(get_db),
 ):
+    active_manager = db.query(User).filter(User.company_id == company_id, User.is_active == True).first()
+    
+    if active_manager:
+        raise HTTPException(
+            status_code=400, 
+            detail="Cannot delete company. There is at least one active manager associated with it."
+        )
+
     success = CompanyCRUD.delete(db, company_id)
+    
     if not success:
         raise HTTPException(status_code=404, detail=f"Company {company_id} not found.")
+        
     return create_response(True, "Company and admin successfully offboarded.")
 
 
@@ -113,3 +125,10 @@ async def get_llm_usage_stats(
     db: Session = Depends(get_db),
 ):
     return InteractionCRUD.get_llm_usage(db)
+
+@router.get("/dashboard/stats", response_model=DashboardOut)
+async def get_dashboard_stats(
+    current_user: User = Depends(check_super_admin_access),
+    db: Session = Depends(get_db)
+):
+    return Dashboard.get_stats(db)

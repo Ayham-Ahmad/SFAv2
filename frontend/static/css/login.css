@@ -1,0 +1,78 @@
+.card {
+  background-color: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  color: #869c74;
+}
+
+.card:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.8);
+}
+
+.login,
+.sign-up {
+  color: #869c74;
+}
+
+.login:hover,
+.sign-up:hover {
+  color: #cca33b;
+  text-decoration: underline;
+  text-decoration-color: #cca33b;
+  cursor: pointer;
+}
+
+hr {
+  border-color: #2a2a2a;
+}
+
+label {
+  color: #869c74;
+  font-weight: bold;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="email"] {
+  width: 100%;
+  padding: 10px;
+  background-color: #121212;
+  border: 1px solid #2a2a2a;
+  border-radius: 5px;
+  color: #869c74;
+}
+
+input:focus {
+  outline: none;
+  border-color: #cca33b;
+}
+
+button[type="submit"] {
+  width: 100%;
+  padding: 10px;
+  background-color: #121212;
+  color: #cca33b;
+  border: 1px solid #cca33b;
+  border-radius: 5px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+button[type="submit"]:hover {
+  background-color: #cca33b;
+  color: #121212;
+}
+
+.error-message {
+  visibility: hidden;
+  text-align: center;
+  padding: 10px;
+  border-radius: 5px;
+  background-color: #2a1111;
+  border: 1px solid #5c2424;
+  color: #ff6b6b !important;
+}
