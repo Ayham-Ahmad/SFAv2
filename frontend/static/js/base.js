@@ -1,3 +1,22 @@
+async function initializeNav() {
+    const navBody = document.querySelector("#dynamic_nav");
+    if (!navBody)
+        return;
+    const response = await fetch("/role");
+    if (!response.ok)
+        return;
+    const data = await response.json();
+    const role = data.role;
+    const partialMap = {
+        superadmin: "/partials/_sidebar_superadmin.html",
+        admin: "/partials/_sidebar_admin.html",
+    };
+    const path = partialMap[role] || "";
+    const partialResponse = await fetch(path);
+    if (partialResponse.ok) {
+        navBody.innerHTML = await partialResponse.text();
+    }
+}
 const storedUser = localStorage.getItem("user");
 if (storedUser) {
     const data = JSON.parse(storedUser);
@@ -14,6 +33,7 @@ if (storedUser) {
         else if (data.user.role === "admin") {
             link = "/admin/settings";
         }
+        initializeNav();
         linkElement.href = link;
     }
 }

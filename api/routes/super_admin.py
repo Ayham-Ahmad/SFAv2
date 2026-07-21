@@ -78,15 +78,7 @@ async def offboard_company(
     current_user: User = Depends(check_super_admin_access),
     db: Session = Depends(get_db),
 ):
-    active_manager = db.query(User).filter(User.company_id == company_id, User.is_active == True).first()
-    
-    if active_manager:
-        raise HTTPException(
-            status_code=400, 
-            detail="Cannot delete company. There is at least one active manager associated with it."
-        )
-
-    success = CompanyCRUD.delete(db, company_id)
+    success = CompanyCRUD.delete(db, company_id, current_user.user_id)
     
     if not success:
         raise HTTPException(status_code=404, detail=f"Company {company_id} not found.")

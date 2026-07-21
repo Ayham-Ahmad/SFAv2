@@ -12,3 +12,4 @@ PrintAllDb.py
 __pycache__/
 *.py[cod]
 tsconfig.json
+skills/

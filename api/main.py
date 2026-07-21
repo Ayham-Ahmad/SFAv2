@@ -14,6 +14,7 @@ from api.routes.super_admin import router as super_admin_router
 from api.routes.chat        import router as chat_router
 from api.routes.graphs      import router as graphs_router
 from api.routes.pages       import router as pages_router
+from api.routes.views       import router as views_router
 
 from .database.database import engine, Base
 
@@ -67,6 +68,7 @@ app.include_router(super_admin_router)
 app.include_router(chat_router)
 app.include_router(graphs_router)
 app.include_router(pages_router)
+app.include_router(views_router)
 
 app.mount("/static", StaticFiles(directory="./frontend/static"), name="static")
 

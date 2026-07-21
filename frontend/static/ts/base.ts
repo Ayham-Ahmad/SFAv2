@@ -6,6 +6,29 @@ export interface User {
   role: string;
 }
 
+async function initializeNav(): Promise<void> {
+  const navBody = document.querySelector<HTMLDivElement>("#dynamic_nav");
+  if (!navBody) return;
+
+  const response = await fetch("/role");
+  if (!response.ok) return;
+
+  const data = await response.json();
+  const role: string = data.role;
+
+  const partialMap: Record<string, string> = {
+    superadmin: "/partials/_sidebar_superadmin.html",
+    admin: "/partials/_sidebar_admin.html",
+  };
+
+  const path = partialMap[role] || "";
+
+  const partialResponse = await fetch(path);
+  if (partialResponse.ok) {
+    navBody.innerHTML = await partialResponse.text();
+  }
+}
+
 const storedUser = localStorage.getItem("user");
 
 if (storedUser) {
@@ -28,6 +51,8 @@ if (storedUser) {
     } else if (data.user.role === "admin") {
       link = "/admin/settings";
     }
+
+    initializeNav();
 
     linkElement.href = link;
   }

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block sheet %}
+<link rel="stylesheet" href="/static/css/usage.css">
+{% endblock %}
+
+{% block nav_list %}
+{% include "/partials/_sidebar_superadmin.html" %}
+{{ super() }}
+{% endblock %}
+
+{% block main %}
+
+{% endblock %}
+
+{% block script %}
+<script type="module" src="/static/js/usage.js"></script>
+{% endblock %}
