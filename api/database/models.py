@@ -86,13 +86,11 @@ class Interaction(Base):
     interaction_content = Column(JSON, nullable=True)
     agent_steps = Column(JSON, nullable=True)
     
-    model_used = Column(String, nullable=True)
+    model_used = Column(JSON, nullable=True)
     status = Column(String, default="pending")
-    cost = Column(Float, default=0.0)
     user_feedback = Column(Boolean, nullable=True)
     
     response_time = Column(Float, nullable=True)
-    token_count = Column(Integer, nullable=True)
     api_call_count = Column(Integer, nullable=True)
     memory_usage = Column(Float, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

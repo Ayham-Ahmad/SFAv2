@@ -13,7 +13,6 @@ from api.database.events import InteractionCRUD, SessionCRUD, CompanyCRUD
 from api.database.events.graphs_events import GraphsCRUD
 from backend.utils.responses import create_response
 from backend.agents.SFA import SFA
-from backend.utils.calculating import calculate_interaction_cost
 from backend.core.task import run_task
 
 router = APIRouter(prefix="/api/chat", tags=["Chat"])
@@ -68,19 +67,14 @@ async def chat_endpoint(
 
     answer_text, usage_metrics, graph_data = await run_task(agent, http_request)
 
-    response_time    = time.time() - start_time
+    response_time    = round(time.time() - start_time, 2)
     _, peak_mem      = tracemalloc.get_traced_memory()
     tracemalloc.stop()
-    memory_usage_mb  = peak_mem / (1024 * 1024)
+    memory_usage_mb  = round(peak_mem / (1024 * 1024), 2)
 
-    total_tokens   = usage_metrics.get("total_tokens", 0)
     api_call_count = usage_metrics.get("api_call", 0)
     steps          = usage_metrics.get("steps", {})
-    estimated_cost = calculate_interaction_cost(
-        model,
-        usage_metrics.get("p_tokens", 0),
-        usage_metrics.get("c_tokens", 0),
-    )
+    model_tokens   = usage_metrics.get("model_tokens", {})
 
     for graph_config in graph_data:
         GraphsCRUD.create(db, graph_config, current_user.user_id, session.session_id)
@@ -90,15 +84,16 @@ async def chat_endpoint(
         interaction_id=interaction.interaction_id,
         content={"answer": answer_text},
         steps=steps,
-        model_used=model,
-        cost=estimated_cost,
+        model_used=model_tokens,
         performance_data=Performance(
             response_time=response_time,
-            token_count=total_tokens,
             api_call_count=api_call_count,
             memory_usage=memory_usage_mb,
         ).model_dump(),
     )
+
+    event_bus = http_request.app.state.event_bus
+    await event_bus.publish("dashboard_update", {})
 
     return create_response(
         success="An error occurred" not in answer_text,

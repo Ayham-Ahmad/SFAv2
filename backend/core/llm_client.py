@@ -35,7 +35,7 @@ async def call_llm(
         if not content:
             raise ValueError("LLM returned an empty response.")
             
-        extract_tokens(response, usage_metrics)
+        extract_tokens(response, model, usage_metrics)
         
         usage_metrics["api_call"] += 1
         
@@ -57,6 +57,7 @@ async def call_agent(prompt: str, model: str, usage_metrics: Dict[str, Any], use
         
         response = await llm.ainvoke([HumanMessage(content=prompt)])
         
+        extract_tokens(response, model, usage_metrics)
         usage_metrics["api_call"] += 1
                         
         return response.content, usage_metrics

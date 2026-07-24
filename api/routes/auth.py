@@ -47,9 +47,11 @@ async def login(
         max_age=60 * 60
     )
     
+    company = CompanyCRUD.get_by_id(db, user.company_id) if user.company_id else None
     return {"session_id": session.session_id,
             "user": {"user_id": user.user_id, "username": user.username, "email": user.email,
-                     "company_id": user.company_id, "role": user.role}}
+                     "company_id": user.company_id, "company_name": company.company_name if company else None,
+                     "role": user.role}}
 
 # ── Logout ────────────────────────────────────────────────────────────────────
 

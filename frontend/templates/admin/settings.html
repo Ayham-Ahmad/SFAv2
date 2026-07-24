@@ -1,6 +1,198 @@
 {% extends "base.html" %}
 
-{% block nav_list%}
+{% block sheet %}
+<link rel="stylesheet" href="/static/css/admin_settings.css">
+{% endblock %}
+
+{% block nav_list %}
 {% include "/partials/_sidebar_admin.html" %}
 {{ super() }}
+{% endblock %}
+
+{% block main %}
+<div class="container">
+    <div class="header-actions">
+        <h2 class="page-title">Settings</h2>
+    </div>
+
+    <!-- Card 1: Company Info -->
+    <div class="settings-card" data-card="company">
+        <h3 class="settings-card-title">Company Info</h3>
+        <hr>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="company_name">Company Name</label>
+                <input type="text" id="company_name" name="company_name">
+            </div>
+            <div class="form-group">
+                <label>Plan</label>
+                <div id="plan_badge" class="plan-badge">-</div>
+            </div>
+            <div class="form-group">
+                <label>Created At</label>
+                <span id="company_created_at" class="settings-readonly">-</span>
+            </div>
+        </div>
+        <div class="settings-card-footer">
+            <button type="button" class="settings-save" data-card="company">Save</button>
+        </div>
+    </div>
+
+    <!-- Card 2: Traffic Light Config -->
+    <div class="settings-card" data-card="traffic_light">
+        <h3 class="settings-card-title">Traffic Light</h3>
+        <hr>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="tl_title">Title</label>
+                <input type="text" id="tl_title" name="tl_title" placeholder="Financial Health">
+            </div>
+            <div class="form-group">
+                <label for="tl_expression">Expression</label>
+                <input type="text" id="tl_expression" name="tl_expression" placeholder="e.g. revenue > 1000">
+            </div>
+            <div class="form-group">
+                <label for="tl_green">Green Threshold</label>
+                <input type="number" id="tl_green" name="tl_green" step="any">
+            </div>
+            <div class="form-group">
+                <label for="tl_red">Red Threshold</label>
+                <input type="number" id="tl_red" name="tl_red" step="any">
+            </div>
+        </div>
+        <div class="settings-card-footer">
+            <button type="button" class="settings-save" data-card="traffic_light">Save</button>
+        </div>
+    </div>
+
+    <!-- Card 3: Metrics Config -->
+    <div class="settings-card" data-card="metrics">
+        <h3 class="settings-card-title">Metrics</h3>
+        <hr>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="metric_column">Metric Column</label>
+                <input type="text" id="metric_column" name="metric_column" placeholder="Column name">
+            </div>
+            <div class="form-group">
+                <label for="metric_format">Metric Format</label>
+                <select id="metric_format" name="metric_format">
+                    <option value="text">Text</option>
+                    <option value="currency">Currency</option>
+                    <option value="percent">Percent</option>
+                    <option value="number">Number</option>
+                </select>
+            </div>
+        </div>
+        <div class="settings-card-footer">
+            <button type="button" class="settings-save" data-card="metrics">Save</button>
+        </div>
+    </div>
+
+    <!-- Card 4: Graph Config -->
+    <div class="settings-card" data-card="graph">
+        <h3 class="settings-card-title">Graph</h3>
+        <hr>
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="graph_type">Graph Type</label>
+                <select id="graph_type" name="graph_type">
+                    <option value="bar">Bar</option>
+                    <option value="line">Line</option>
+                    <option value="pie">Pie</option>
+                    <option value="area">Area</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="graph_title">Title</label>
+                <input type="text" id="graph_title" name="graph_title" placeholder="Performance Overview">
+            </div>
+            <div class="form-group">
+                <label for="graph_x_column">X Column</label>
+                <input type="text" id="graph_x_column" name="graph_x_column">
+            </div>
+            <div class="form-group">
+                <label for="graph_x_format">X Format</label>
+                <select id="graph_x_format" name="graph_x_format">
+                    <option value="text">Text</option>
+                    <option value="currency">Currency</option>
+                    <option value="percent">Percent</option>
+                    <option value="number">Number</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="graph_y_column">Y Column</label>
+                <input type="text" id="graph_y_column" name="graph_y_column">
+            </div>
+            <div class="form-group">
+                <label for="graph_y_format">Y Format</label>
+                <select id="graph_y_format" name="graph_y_format">
+                    <option value="text">Text</option>
+                    <option value="currency" selected>Currency</option>
+                    <option value="percent">Percent</option>
+                    <option value="number">Number</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="graph_x2_column">Secondary X Column</label>
+                <input type="text" id="graph_x2_column" name="graph_x2_column">
+            </div>
+            <div class="form-group">
+                <label for="graph_x2_format">Secondary X Format</label>
+                <select id="graph_x2_format" name="graph_x2_format">
+                    <option value="text">Text</option>
+                    <option value="currency">Currency</option>
+                    <option value="percent">Percent</option>
+                    <option value="number">Number</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="graph_range_mode">Data Range Mode</label>
+                <select id="graph_range_mode" name="graph_range_mode">
+                    <option value="all">All</option>
+                    <option value="limit">Limit</option>
+                </select>
+            </div>
+            <div class="form-group" id="range_limit_group">
+                <label for="graph_range_limit">Range Limit</label>
+                <input type="number" id="graph_range_limit" name="graph_range_limit" min="1" value="12">
+            </div>
+        </div>
+        <div class="settings-card-footer">
+            <button type="button" class="settings-save" data-card="graph">Save</button>
+        </div>
+    </div>
+
+    <!-- Card 5: Plan & Limits -->
+    <div class="settings-card" data-card="limits">
+        <h3 class="settings-card-title">Plan & Limits</h3>
+        <hr>
+        <div class="limits-grid">
+            <div class="limit-item">
+                <span class="limit-label">Databases</span>
+                <span class="limit-value" id="limit_dbs">-</span>
+            </div>
+            <div class="limit-item">
+                <span class="limit-label">Managers</span>
+                <span class="limit-value" id="limit_managers">-</span>
+            </div>
+            <div class="limit-item">
+                <span class="limit-label">Tables</span>
+                <span class="limit-value" id="limit_tables">-</span>
+            </div>
+            <div class="limit-item">
+                <span class="limit-label">Storage</span>
+                <span class="limit-value" id="limit_storage">-</span>
+            </div>
+        </div>
+        <div class="allowed-models">
+            <span class="limit-label">Allowed Models</span>
+            <div id="model_pills" class="model-pills"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module" src="/static/js/admin_settings.js"></script>
 {% endblock %}

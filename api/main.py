@@ -28,6 +28,10 @@ async def lifespan(app: FastAPI):
     print("Connecting to Database...")
     Base.metadata.create_all(bind=engine)
 
+    from backend.core.event_bus import event_bus
+    app.state.event_bus = event_bus
+    print("[OK] Event bus attached to app.state.")
+
     print("Warming up AI modules and Vector DB...")
     from langchain_groq import ChatGroq
     from backend.core.RAG.db_loader import load_vector_db 

@@ -34,7 +34,7 @@ class MongoManager(BaseDataManager):
                 self.db = self.client[self.database_name]
                 self.is_connected = True
                 return True
-            except Exception:
+            except Exception as e:
                 self.is_connected = False
                 self.disconnect()
                 return False

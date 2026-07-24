@@ -12,12 +12,11 @@
   border: 1px solid #2a2a2a;
   border-radius: 15px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease;
 }
 
 .card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.8);
 }
 
 .card-title {
@@ -32,11 +31,12 @@
   font-weight: bold;
 }
 
-.container {
-  margin: 10px;
-  max-width: calc(100% - 20px);
-  padding: 20px;
-  border: 1px solid #2a2a2a;
-  border-radius: 20px;
-  background-color: #181818;
+@keyframes cardPulse {
+  0%   { border-color: #2a2a2a; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); }
+  30%  { border-color: #cca33b; box-shadow: 0 4px 24px rgba(204, 163, 59, 0.5); }
+  100% { border-color: #2a2a2a; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); }
+}
+
+.card.pulse {
+  animation: cardPulse 1s ease-out forwards;
 }

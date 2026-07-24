@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
@@ -47,11 +48,23 @@ async def list_tents(
     db: Session = Depends(get_db),
 ):
     tents = TentCRUD.get_tents_by_company(db, current_user.company_id)
-    updated = False
 
+    async def check(tent):
+        try:
+            manager = await asyncio.wait_for(
+                MultiTenantDBManager.get_manager_for_tent(tent),
+                timeout=3.0,
+            )
+            return tent.db_id, bool(manager and manager.is_connected)
+        except (asyncio.TimeoutError, Exception):
+            return tent.db_id, False
+
+    results = await asyncio.gather(*[check(t) for t in tents])
+    status_map = dict(results)
+
+    updated = False
     for tent in tents:
-        manager = await MultiTenantDBManager.get_manager_for_tent(tent)
-        is_connected = bool(manager and manager.is_connected)
+        is_connected = status_map.get(tent.db_id, False)
         if tent.is_connected != is_connected:
             tent.is_connected = is_connected
             updated = True

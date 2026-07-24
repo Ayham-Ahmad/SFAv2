@@ -39,6 +39,9 @@ async function login() {
         else if (data.user.role === "admin") {
             window.location.href = "/admin/settings";
         }
+        else if (data.user.role === "manager") {
+            window.location.href = "/analytics";
+        }
     }
     else {
         const error = await response.json();

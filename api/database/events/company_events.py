@@ -53,7 +53,7 @@ class CompanyCRUD:
 
     @staticmethod
     def get_all(db: Session) -> List[Company]:
-        return db.query(Company).order_by(Company.company_name).all()
+        return db.query(Company).order_by(Company.company_id).all()
 
     @staticmethod
     def get_companies_summary(db: Session):

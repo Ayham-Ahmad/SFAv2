@@ -13,3 +13,6 @@ __pycache__/
 *.py[cod]
 tsconfig.json
 skills/
+opencode.json
+planning-with-files
+*.md

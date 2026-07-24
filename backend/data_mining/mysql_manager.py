@@ -51,7 +51,6 @@ class MySQLManager(BaseDataManager):
             self.is_connected = self.conn.is_connected()
             return self.is_connected
         except Error as e:
-            print(f"DEBUG: Connection failed: {e}")
             self.is_connected = False
             return False
 

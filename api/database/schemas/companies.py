@@ -136,6 +136,13 @@ class ModelCostConfig(BaseModel):
 
 MODEL_PRICING: Dict[AIModel, ModelCostConfig] = {
     
+    # Prompt Guard 2 86M (Safety classifier)
+    AIModel.LLAMA_GUARD_86M: ModelCostConfig(
+        input_cost_per_1m=0.04,
+        output_cost_per_1m=0.04,
+        context_window=512
+    ),
+
     # Llama 3.1 8B (Cheap & Fast)
     AIModel.LLAMA_31_8B: ModelCostConfig(
         input_cost_per_1m=0.05,   

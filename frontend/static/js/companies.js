@@ -17,9 +17,12 @@ async function loadCompanies() {
             const tr = document.createElement("tr");
             const date = new Date(company.company_created_at);
             const formattedDate = date.toLocaleDateString();
+            const companyName = company.company_name.length > 20
+                ? company.company_name.slice(0, 20) + "..."
+                : company.company_name;
             tr.innerHTML = `
         <td>${company.company_id}</td>
-        <td>${company.company_name}</td>
+        <td title="${company.company_name}">${companyName}</td>
         <td>${company.plan}</td>
         <td>${company.databases_count}</td>
         <td>${company.managers_count}</td>

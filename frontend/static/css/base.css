@@ -2,13 +2,23 @@
   box-sizing: border-box;
 }
 
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
 html,
 body {
   height: 100%;
   margin: 0;
   background-color: #121212;
   color: #869c74;
-  font-family: Arial, sans-serif;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
 }
 
 body {
@@ -23,25 +33,41 @@ body {
   width: 20%;
   height: 100vh;
   border: solid #2a2a2a 2px;
-  border-radius: 20px;
+  border-radius: 0px;
   display: flex;
   flex-direction: column;
   gap: 20px;
   padding: 10px;
   background-color: #1a1a1a;
+  /* border-bottom-right-radius: 0px */
 }
 
 .nav-header {
   display: flex;
-  gap: 20px;
-  align-items: center;
+  flex-direction: column;
+  gap: 5px;
   color: #cca33b;
   font-weight: bold;
   font-size: 1.2rem;
+  border-bottom: 1px solid #2a2a2a;
+  padding-bottom: 15px;
+}
+
+.company-tag {
+  font-size: 0.7rem;
+  color: #869c74;
 }
 
 .nav-body {
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  flex: 1;
+}
+
+#dynamic_nav {
+  display: flex;
+  flex-direction: column;
   gap: 15px;
 }
 
@@ -55,6 +81,23 @@ body {
   color: #cca33b;
   text-decoration: underline;
   text-decoration-color: #cca33b;
+}
+
+.nav-footer {
+  border-top: 1px solid #2a2a2a;
+  padding-top: 15px;
+}
+
+.nav-footer a {
+  color: #ff6b6b;
+  text-decoration: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.nav-footer a:hover {
+  text-decoration: underline;
+  text-decoration-color: #ff6b6b;
 }
 
 .wrapper {
@@ -173,4 +216,66 @@ body {
 .submit-button:hover {
   background-color: #cca33b;
   color: #121212;
+}
+
+.container {
+  margin: 10px;
+  max-width: calc(100% - 20px);
+  padding: 20px;
+  border: 1px solid #2a2a2a;
+  border-radius: 20px;
+  background-color: #181818;
+}
+
+.mt-20 {
+  margin-top: 20px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.page-title {
+  color: #cca33b;
+  margin: 0;
+}
+
+.simple-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #869c74;
+  font-size: 14px;
+}
+
+.simple-table th,
+.simple-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.simple-table th {
+  color: #cca33b;
+  font-weight: bold;
+}
+
+.simple-table tr:hover {
+  background-color: #1f1f1f;
+}
+
+.delete-button {
+  padding: 5px 10px;
+  background-color: #2a1111;
+  color: #ff6b6b;
+  border: 1px solid #ff6b6b;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.delete-button:hover {
+  background-color: #ff6b6b;
+  color: #2a1111;
 }

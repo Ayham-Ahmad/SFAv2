@@ -17,6 +17,11 @@ class UserCRUD:
 
         data = to_dict(user_data)
 
+        if "username" in data and UserCRUD.get_by_username(db, data["username"]):
+            raise ValueError("Username already taken.")
+        if "email" in data and UserCRUD.get_by_email(db, data["email"]):
+            raise ValueError("Email already registered.")
+
         if "password" in data:
             plain_password = data.pop("password")
             data["hashed_password"] = get_password_hash(plain_password)
@@ -58,6 +63,7 @@ class UserCRUD:
 
     @staticmethod
     def get_by_username(db: Session, username: str) -> Optional[User]:
+        print(User.username, username)
         return db.query(User).filter(User.username == username).first()
 
     @staticmethod
@@ -70,7 +76,7 @@ class UserCRUD:
 
     @staticmethod
     def get_all(db: Session) -> List[User]:
-        return db.query(User).order_by(User.username).all()
+        return db.query(User).order_by(User.user_id).all()
 
     @staticmethod
     def get_all_by_company(db: Session, company_id: int, skip: int = 0, limit: int = 50) -> List[User]:

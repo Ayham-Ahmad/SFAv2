@@ -1,6 +1,61 @@
 {% extends "base.html" %}
 
-{% block nav_list%}
+{% block sheet %}
+<link rel="stylesheet" href="/static/css/admin_team.css">
+{% endblock %}
+
+{% block nav_list %}
 {% include "/partials/_sidebar_admin.html" %}
 {{ super() }}
+{% endblock %}
+
+{% block main %}
+<div class="container">
+    <div class="header-actions">
+        <h2 class="page-title">Team</h2>
+        <button type="button" id="add_member_btn" class="submit-button">Add Member</button>
+    </div>
+
+    <div class="card mt-20">
+        <table class="simple-table" id="team_table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Last Login</th>
+                    <th>Created At</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="team_table_body">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div id="add_member_modal" class="modal">
+    <div class="modal-content card">
+        <h3 class="card-title">Add Team Member</h3>
+        <hr>
+        <form id="add_member_form">
+            <label for="member_username">Username</label>
+            <input type="text" id="member_username" name="username" required>
+            <label for="member_email">Email</label>
+            <input type="email" id="member_email" name="email" required>
+            <label for="member_password">Password</label>
+            <input type="password" id="member_password" name="password" required>
+            <div class="modal-actions">
+                <button type="button" id="cancel_add_btn" class="cancel-button">Cancel</button>
+                <button type="submit" class="submit-button">Add</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module" src="/static/js/admin_team.js"></script>
 {% endblock %}

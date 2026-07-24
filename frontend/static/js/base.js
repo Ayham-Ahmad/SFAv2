@@ -33,10 +33,25 @@ if (storedUser) {
         else if (data.user.role === "admin") {
             link = "/admin/settings";
         }
+        else if (data.user.role === "manager") {
+            link = "/analytics";
+        }
         initializeNav();
         linkElement.href = link;
+        if ((data.user.role === "admin" || data.user.role === "manager") &&
+            data.user.company_name) {
+            const companyTag = document.getElementById("company_tag");
+            if (companyTag) {
+                companyTag.textContent = data.user.company_name;
+            }
+        }
     }
 }
+document.getElementById("logout_btn")?.addEventListener("click", async () => {
+    await fetch("/logout", { method: "POST", credentials: "include" });
+    localStorage.removeItem("user");
+    window.location.href = "/login";
+});
 export function showToast(message, type) {
     const toast = document.getElementById("toast_notification");
     const toastMessage = document.getElementById("toast_message");
@@ -88,3 +103,7 @@ export function confirmDoubleAction(message, onConfirm) {
 }
 window.showToast = showToast;
 window.confirmDoubleAction = confirmDoubleAction;
+const isLoginPage = window.location.pathname === "/login";
+if (!isLoginPage && !localStorage.getItem("user")) {
+    window.location.href = "/login";
+}

@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import asyncio
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from typing import List
@@ -47,6 +49,7 @@ async def get_company(
 
 @router.post("/companies", response_model=CompanyOut, status_code=status.HTTP_201_CREATED)
 async def onboard_company(
+    request: Request,
     payload: OnboardRequest,
     current_user: User = Depends(check_super_admin_access),
     db: Session = Depends(get_db),
@@ -69,11 +72,16 @@ async def onboard_company(
         },
         actor_id=current_user.user_id,
     )
+
+    event_bus = request.app.state.event_bus
+    await event_bus.publish("dashboard_update", {})
+
     return company
 
 
 @router.delete("/companies/{company_id}")
 async def offboard_company(
+    request: Request,
     company_id: int,
     current_user: User = Depends(check_super_admin_access),
     db: Session = Depends(get_db),
@@ -82,7 +90,10 @@ async def offboard_company(
     
     if not success:
         raise HTTPException(status_code=404, detail=f"Company {company_id} not found.")
-        
+
+    event_bus = request.app.state.event_bus
+    await event_bus.publish("dashboard_update", {})
+
     return create_response(True, "Company and admin successfully offboarded.")
 
 
@@ -124,3 +135,35 @@ async def get_dashboard_stats(
     db: Session = Depends(get_db)
 ):
     return Dashboard.get_stats(db)
+
+
+@router.get("/dashboard/stream")
+async def dashboard_stream(
+    request: Request,
+    current_user: User = Depends(check_super_admin_access),
+    db: Session = Depends(get_db),
+):
+    event_bus = request.app.state.event_bus
+    subscriber_id = event_bus.subscribe()
+
+    async def generate():
+        try:
+            stats = Dashboard.get_stats(db)
+            yield f"data: {stats.model_dump_json()}\n\n"
+            async for chunk in event_bus.stream(subscriber_id):
+                stats = Dashboard.get_stats(db)
+                yield f"data: {stats.model_dump_json()}\n\n"
+        except asyncio.CancelledError:
+            pass
+        finally:
+            event_bus.unsubscribe(subscriber_id)
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

@@ -5,12 +5,63 @@
 {% endblock %}
 
 {% block nav_list %}
-{% include "/partials/_sidebar_superadmin.html" %}
 {{ super() }}
 {% endblock %}
 
 {% block main %}
+<div class="container">
+    <div class="header-actions">
+        <h2 class="page-title">LLM Usage</h2>
+    </div>
 
+    <div class="row g-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-title">Total Cost</div>
+                <div class="card-text" id="total_cost_card">$0.00</div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="card">
+                <div class="card-title">Total Tokens</div>
+                <div class="card-text" id="total_tokens_card">0</div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="card">
+                <div class="card-title">Total API Calls</div>
+                <div class="card-text" id="total_calls_card">0</div>
+            </div>
+        </div>
+
+        <div class="col">
+            <div class="card">
+                <div class="card-title">Models Used</div>
+                <div class="card-text" id="total_models_card">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-20">
+        <table class="simple-table" id="usage_table">
+            <thead>
+                <tr>
+                    <th>Model</th>
+                    <th>Cost</th>
+                    <th>Tokens</th>
+                    <th>API Calls</th>
+                    <th>Feedback</th>
+                    <th>Avg Response Time</th>
+                    <th>Avg Memory</th>
+                </tr>
+            </thead>
+            <tbody id="usage_table_body">
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}
 
 {% block script %}

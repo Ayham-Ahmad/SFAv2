@@ -72,6 +72,8 @@ async function login(): Promise<void> {
       window.location.href = "/super-admin/dashboard";
     } else if (data.user.role === "admin") {
       window.location.href = "/admin/settings";
+    } else if (data.user.role === "manager") {
+      window.location.href = "/analytics";
     }
   } else {
     const error = await response.json();

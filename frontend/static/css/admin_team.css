@@ -1,0 +1,23 @@
+#add_member_modal label {
+  display: block;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+#add_member_modal input {
+  width: 100%;
+  padding: 10px;
+  background-color: #121212;
+  border: 1px solid #2a2a2a;
+  border-radius: 5px;
+  color: #869c74;
+}
+
+#add_member_modal input:focus {
+  outline: none;
+  border-color: #cca33b;
+}
+
+.header-actions {
+  justify-content: space-between;
+}

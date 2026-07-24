@@ -1,6 +1,38 @@
 {% extends "base.html" %}
 
-{% block nav_list%}
-{% include "/partials/_sidebar_admin.html" %}
+{% block sheet %}
+<link rel="stylesheet" href="/static/css/admin_tents.css">
+{% endblock %}
+
+{% block nav_list %}
 {{ super() }}
+{% endblock %}
+
+{% block main %}
+<div class="container">
+    <div class="header-actions">
+        <h2 class="page-title">Databases</h2>
+    </div>
+
+    <div class="card mt-20">
+        <table class="simple-table" id="tents_table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Last Synced</th>
+                    <th>Created At</th>
+                </tr>
+            </thead>
+            <tbody id="tents_table_body">
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script type="module" src="/static/js/admin_tents.js"></script>
 {% endblock %}

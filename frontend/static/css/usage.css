@@ -1,0 +1,76 @@
+.card {
+  height: 100%;
+  min-height: 150px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-size: 26px;
+  background-color: #1a1a1a;
+  color: #869c74;
+  border: 1px solid #2a2a2a;
+  border-radius: 15px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.8);
+}
+
+.card-title {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  color: #cca33b;
+}
+
+.card-text {
+  font-size: 32px;
+  font-weight: bold;
+}
+
+.feedback-bar-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.feedback-bar {
+  width: 80px;
+  height: 8px;
+  background-color: #2a2a2a;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.feedback-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.feedback-bar-fill.positive {
+  background-color: #869c74;
+}
+
+.feedback-bar-fill.negative {
+  background-color: #ff6b6b;
+}
+
+.feedback-bar-fill.neutral {
+  background-color: #555;
+}
+
+.feedback-value {
+  font-size: 0.85rem;
+  min-width: 36px;
+}
+
+.metric-unit {
+  font-size: 0.75rem;
+  color: #666;
+  margin-left: 2px;
+}
